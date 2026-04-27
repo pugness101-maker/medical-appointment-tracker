@@ -1456,7 +1456,7 @@ function filterAppointmentSummaries(summaries) {
         item.place,
         item.reasonForVisit,
         item.appointmentStatus,
-        ...visitHistory.flatMap((log) => [log.reason, log.summary, log.results, log.followUpNeeded, log.specialty, log.clinic]),
+        ...visitHistory.flatMap((log) => [log.provider, log.reason, log.summary, log.results, log.followUpNeeded, log.specialty, log.clinic]),
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
