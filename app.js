@@ -523,6 +523,7 @@ syncForms();
 mountVisitLogForm();
 setAddEditMode("none");
 render();
+renderVisitHistoryGlobalList();
 maybeSendBrowserNotifications();
 
 function bindEvents() {
@@ -675,6 +676,10 @@ function setSubtab(group, target) {
       view.classList.toggle("is-active", view.dataset.subview === target);
     }
   });
+
+  if (group === "appointments" && target === "records") {
+    renderVisitHistoryGlobalList();
+  }
 }
 
 function handleAppointmentSubmit(event) {
