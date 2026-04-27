@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Medical Appointment Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Medical Appointment Tracker</p>
+          <h1>Keep visits, reminders, and insurance in one place.</h1>
+          <p class="hero-copy">
+            Add doctors, save where you go, track the last visit date, and let the app suggest the
+            next visit using rules you set yourself. This tool does not provide medical advice.
+          </p>
+        </div>
+        <div class="hero-panel">
+          <div class="stat-card">
+            <span>Upcoming reminders</span>
+            <strong id="heroReminderCount">0</strong>
+          </div>
+          <div class="stat-card">
+            <span>Tracked providers</span>
+            <strong id="heroProviderCount">0</strong>
+          </div>
+          <details class="hero-dropdown">
+            <summary class="button-secondary hero-dropdown-button">Personal Profile</summary>
+            <div class="hero-dropdown-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Personal Profile</p>
+                  <h2>Profile for guideline-informed suggestions</h2>
+                  <p class="meta">
+                    Age, sex at birth, and a few risk details help the app suggest screening appointments to discuss with a clinician.
+                  </p>
+                </div>
+              </div>
+              <form id="profileForm" class="form-grid">
+                <label>
+                  Date of birth
+                  <input type="date" name="birthDate" />
+                </label>
+                <label>
+                  Sex at birth
+                  <select name="sexAtBirth">
+                    <option value="">Prefer not to say</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                  </select>
+                </label>
+                <label>
+                  Do you currently have a cervix?
+                  <select name="hasCervix">
+                    <option value="">Not sure / prefer not to say</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </label>
+                <label>
+                  Postmenopausal
+                  <select name="postmenopausal">
+                    <option value="">Not sure / not applicable</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </label>
+                <label>
+                  Smoking status
+                  <select name="smokingStatus">
+                    <option value="">Prefer not to say</option>
+                    <option value="never">Never</option>
+                    <option value="former">Former</option>
+                    <option value="current">Current</option>
+                  </select>
+                </label>
+                <label>
+                  Pack-years smoked
+                  <input type="number" name="packYears" min="0" step="1" placeholder="20" />
+                </label>
+                <label>
+                  Years since quitting
+                  <input type="number" name="yearsSinceQuit" min="0" step="1" placeholder="10" />
+                </label>
+                <label>
+                  Overweight or obesity
+                  <select name="hasOverweightOrObesity">
+                    <option value="">Not sure / prefer not to say</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </label>
+                <div class="inline-row full-span">
+                  <button class="button-primary" type="submit">Save Profile</button>
+                </div>
+              </form>
+            </div>
+          </details>
+          <button id="notificationButton" class="button-secondary" type="button">
+            Enable Browser Notifications
+          </button>
+        </div>
+      </header>
+
+      <nav class="tabbar" aria-label="Primary">
+        <button class="tabbar-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
+        <button class="tabbar-button" type="button" data-screen-target="appointments">Appointments</button>
+        <button class="tabbar-button" type="button" data-screen-target="care-team">Care Team</button>
+        <button class="tabbar-button" type="button" data-screen-target="insurance">Insurance</button>
+      </nav>
+
+      <main class="screen-stack">
+        <section class="app-screen is-active" data-screen="dashboard">
+          <nav class="subtabbar" aria-label="Dashboard Sections">
+            <button class="subtab-button is-active" type="button" data-subtab-group="dashboard" data-subtab-target="overview">Overview</button>
+            <button class="subtab-button" type="button" data-subtab-group="dashboard" data-subtab-target="reminders">Reminders</button>
+            <button class="subtab-button" type="button" data-subtab-group="dashboard" data-subtab-target="schedule">Schedule</button>
+          </nav>
+
+          <section class="panel subview-panel is-active" data-subview-group="dashboard" data-subview="overview">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Suggested Appointments</p>
+                <h2>Recommendations based on your profile</h2>
+                <p class="meta">
+                  These suggestions are derived from official screening guidance and should be discussed with a clinician.
+                </p>
+              </div>
+            </div>
+            <div id="recommendationList" class="card-list empty-state"></div>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">At A Glance</p>
+                <h2>Your next visits and reminders</h2>
+              </div>
+              <button id="quickAddButton" class="button-primary" type="button">Add Appointment</button>
+            </div>
+            <div class="quick-action-row">
+              <button id="dashboardAddAppointmentButton" class="button-secondary" type="button">Add Appointment</button>
+              <button id="dashboardAddVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>
+              <button id="dashboardViewCareTeamButton" class="button-secondary" type="button">View Care Team</button>
+              <button id="dashboardInsuranceButton" class="button-secondary" type="button">Insurance Info</button>
+            </div>
+            <div id="dashboardStats" class="stats-grid"></div>
+          </section>
+
+          <section class="panel subview-panel" data-subview-group="dashboard" data-subview="reminders">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Reminder Center</p>
+                <h2>Due now or coming up soon</h2>
+              </div>
+            </div>
+            <div id="reminderList" class="card-list empty-state"></div>
+          </section>
+
+          <section class="panel subview-panel" data-subview-group="dashboard" data-subview="schedule">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Schedule</p>
+                <h2>All tracked appointments</h2>
+              </div>
+            </div>
+            <div id="dashboardAppointmentList" class="card-list empty-state"></div>
+          </section>
+        </section>
+
+        <section class="app-screen" data-screen="appointments">
+          <nav class="subtabbar" aria-label="Appointment Sections">
+            <button class="subtab-button is-active" type="button" data-subtab-group="appointments" data-subtab-target="form">Add / Edit</button>
+            <button class="subtab-button" type="button" data-subtab-group="appointments" data-subtab-target="records">Records</button>
+          </nav>
+
+          <section class="panel subview-panel is-active" data-subview-group="appointments" data-subview="form">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Appointments</p>
+                <h2 id="appointmentFormTitle">Add appointment</h2>
+                <p class="meta">
+                  Suggested next visit dates are calculated from the rule you choose and are not medical advice.
+                </p>
+              </div>
+              <div class="inline-row">
+                <button id="newAppointmentButton" class="button-primary" type="button">Add New</button>
+                <button id="jumpToVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>
+                <button id="jumpToNotesButton" class="button-secondary" type="button">Notes</button>
+                <button id="jumpToFilesButton" class="button-secondary" type="button">Files</button>
+              </div>
+            </div>
+            <div class="segmented-control" aria-label="Choose record type">
+              <button id="appointmentModeButton" class="button-secondary is-active" type="button">Appointment</button>
+              <button id="visitLogModeButton" class="button-secondary" type="button">Visit Log</button>
+            </div>
+
+            <form id="appointmentForm" class="form-grid">
+              <input type="hidden" name="appointmentId" />
+              <details class="full-span form-section" open>
+                <summary class="form-section-summary">Basic Info</summary>
+                <div class="form-grid form-section-body">
+                  <label>
+                    Visit label
+                    <input type="text" name="title" placeholder="Dental cleaning" required />
+                  </label>
+                  <label>
+                    Provider
+                    <select name="doctor" id="providerSelect" required></select>
+                  </label>
+                  <label>
+                    Specialty
+                    <select name="specialty" id="specialtySelect"></select>
+                  </label>
+                  <label id="customProviderLabel" class="full-span is-hidden">
+                    Custom provider
+                    <input type="text" name="customDoctor" placeholder="Dr. Patel" />
+                  </label>
+                  <label id="customSpecialtyLabel" class="full-span is-hidden">
+                    Custom specialty
+                    <input type="text" name="customSpecialty" placeholder="Endocrinologist" />
+                  </label>
+                  <label>
+                    Clinic
+                    <input type="text" name="clinic" placeholder="Austin Family Dental" />
+                  </label>
+                  <label>
+                    Address
+                    <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
+                  </label>
+                  <label>
+                    Phone number
+                    <input type="text" name="contactPhone" placeholder="Optional office number" />
+                  </label>
+                  <label>
+                    Insurance accepted
+                    <input type="text" name="insuranceAccepted" placeholder="Aetna, BCBS, self-pay" />
+                  </label>
+                  <label>
+                    Portal link
+                    <input type="url" name="portalLink" placeholder="https://portal.example.com" />
+                  </label>
+                  <label>
+                    Appointment date
+                    <input type="date" name="appointmentDate" />
+                  </label>
+                  <label>
+                    Appointment time
+                    <input type="time" name="appointmentTime" />
+                  </label>
+                  <label>
+                    Appointment status
+                    <select name="appointmentStatus">
+                      <option>Planned</option>
+                      <option>Scheduled</option>
+                      <option>Completed</option>
+                      <option>Cancelled</option>
+                      <option>Need to reschedule</option>
+                    </select>
+                  </label>
+                  <label>
+                    Override next recommended visit (optional)
+                    <input type="date" name="nextRecommendedVisit" />
+                  </label>
+                  <label>
+                    Rule: repeat every X months
+                    <input type="number" name="intervalMonths" min="1" step="1" placeholder="6" required />
+                  </label>
+                  <label>
+                    Remind me X days before
+                    <input type="number" name="reminderDaysBefore" min="0" step="1" placeholder="14" required />
+                  </label>
+                  <label>
+                    Reminder notifications
+                    <select name="reminderEnabled">
+                      <option value="yes">Enabled</option>
+                      <option value="no">Disabled</option>
+                    </select>
+                  </label>
+                  <label class="full-span">
+                    Reason for visit
+                    <select name="reasonForVisit" id="reasonSelect"></select>
+                  </label>
+                  <label id="customReasonLabel" class="full-span is-hidden">
+                    Custom reason for visit
+                    <input type="text" name="customReasonForVisit" placeholder="Follow-up, annual exam, screening, symptoms" />
+                  </label>
+                </div>
+              </details>
+              <details class="full-span form-section" id="notesSection">
+                <summary class="form-section-summary">Notes</summary>
+                <div class="form-grid form-section-body">
+                  <label class="full-span">
+                    Notes / questions to ask
+                    <textarea
+                      name="questionsToAsk"
+                      rows="3"
+                      placeholder="Questions, symptoms, prep details, and what to bring"
+                    ></textarea>
+                  </label>
+                  <label class="full-span">
+                    Medications
+                    <textarea
+                      name="medications"
+                      rows="2"
+                      placeholder="Current medications or supplements relevant to this visit"
+                    ></textarea>
+                  </label>
+                  <label class="full-span">
+                    Test results summary
+                    <textarea
+                      name="testResults"
+                      rows="3"
+                      placeholder="Lab results, imaging notes, or important numbers"
+                    ></textarea>
+                  </label>
+                  <label class="full-span">
+                    Notes
+                    <textarea
+                      name="notes"
+                      rows="3"
+                      placeholder="Hours, prep instructions, parking details, or what to ask next time"
+                    ></textarea>
+                  </label>
+                </div>
+              </details>
+              <details class="full-span form-section" id="filesSection">
+                <summary class="form-section-summary">Files</summary>
+                <div class="form-grid form-section-body">
+                  <label class="full-span">
+                    Test result files
+                    <input type="file" name="resultFiles" multiple />
+                    <span class="meta">This app stores selected file names only, not the actual files.</span>
+                  </label>
+                </div>
+              </details>
+              <div class="preview-card full-span">
+                <span class="eyebrow">Preview</span>
+                <strong id="suggestionPreview">Next visit suggestion will appear here.</strong>
+                <span id="reminderPreview" class="meta">Reminder timing will appear here.</span>
+              </div>
+              <div class="inline-row full-span">
+                <button id="appointmentSubmitButton" class="button-primary" type="submit">Save Appointment</button>
+                <button id="appointmentCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+              </div>
+            </form>
+            <div id="visitLogFormMount"></div>
+          </section>
+
+          <section class="panel subview-panel" data-subview-group="appointments" data-subview="history">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Visit History / Past Visits</p>
+                <h2 id="visitLogFormTitle">Add visit log</h2>
+              </div>
+            </div>
+            <form id="visitLogForm" class="form-grid">
+              <input type="hidden" name="visitLogAppointmentId" />
+              <input type="hidden" name="visitLogId" />
+              <div class="quick-log-panel full-span">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Quick Log</p>
+                    <h3>Fast visit log entry</h3>
+                    <p class="meta">Use a template and provider auto-fill to log visits quickly.</p>
+                  </div>
+                </div>
+                <div class="form-grid quick-log-grid">
+                  <label>
+                    Provider
+                    <select name="provider" id="visitLogProviderSelect"></select>
+                  </label>
+                  <label>
+                    Visit date
+                    <input type="date" name="date" />
+                  </label>
+                  <label>
+                    Quick template
+                    <select id="visitLogQuickTemplate" name="quickTemplate">
+                      <option value="">Choose template</option>
+                      <option value="annual-checkup">Annual checkup</option>
+                      <option value="dental-cleaning">Dental cleaning</option>
+                      <option value="eye-exam">Eye exam</option>
+                      <option value="lab-review">Lab review</option>
+                      <option value="medication-refill">Medication refill</option>
+                      <option value="follow-up">Follow-up</option>
+                      <option value="sick-visit">Sick visit</option>
+                      <option value="screening">Screening</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label>
+                    Status
+                    <select name="status">
+                      <option>Completed</option>
+                      <option>Waiting on results</option>
+                      <option>Follow-up needed</option>
+                      <option>Resolved</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="inline-row quick-log-actions">
+                  <button id="visitLogQuickSaveButton" class="button-primary" type="button">Save Quick Log</button>
+                  <button id="visitLogSaveAddAnotherButton" class="button-secondary" type="button">Save & Add Another</button>
+                </div>
+                <p id="visitLogLastAppointmentInfo" class="meta">Choose a provider to autofill clinic, specialty, and reason.</p>
+              </div>
+              <label>
+                Clinic
+                <input type="text" name="clinic" placeholder="Clinic name or address" />
+              </label>
+              <label>
+                Specialty
+                <select name="specialty" id="visitLogSpecialtySelect"></select>
+              </label>
+              <label id="visitLogCustomSpecialtyLabel" class="full-span is-hidden">
+                Custom specialty
+                <input type="text" name="customSpecialty" placeholder="Custom specialty" />
+              </label>
+              <label class="full-span">
+                Reason
+                <input type="text" name="reason" placeholder="Annual checkup, follow-up, screening" />
+              </label>
+              <details class="more-details full-span">
+                <summary>More details</summary>
+                <div class="form-grid">
+                  <label class="full-span">
+                    Summary
+                    <textarea name="summary" rows="2" placeholder="What happened at the visit?"></textarea>
+                  </label>
+                  <div class="note-preset-row full-span">
+                    <button type="button" class="button-secondary note-preset" data-visit-log-preset="normal">Normal visit</button>
+                    <button type="button" class="button-secondary note-preset" data-visit-log-preset="waiting-results">Waiting for results</button>
+                    <button type="button" class="button-secondary note-preset" data-visit-log-preset="needs-follow-up">Needs follow-up</button>
+                    <button type="button" class="button-secondary note-preset" data-visit-log-preset="paid-copay">Paid copay</button>
+                    <button type="button" class="button-secondary note-preset" data-visit-log-preset="no-concerns">No concerns</button>
+                  </div>
+                  <label class="full-span">
+                    Results
+                    <textarea name="results" rows="2" placeholder="Labs, imaging, diagnosis, or takeaways"></textarea>
+                  </label>
+                  <label>
+                    Follow-up needed
+                    <input type="text" name="followUpNeeded" placeholder="Return in 6 months, book test, monitor symptoms" />
+                  </label>
+                  <label>
+                    Follow-up due date
+                    <input type="date" name="followUpDueDate" />
+                  </label>
+                  <label>
+                    Cost / copay
+                    <input type="text" name="costCopay" placeholder="$35 copay" />
+                  </label>
+                </div>
+              </details>
+              <div class="inline-row full-span">
+                <button id="visitLogSubmitButton" class="button-primary" type="submit">Save Visit Log</button>
+                <button id="visitLogCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+              </div>
+            </form>
+            <div id="visitHistoryGlobalList" class="card-list empty-state"></div>
+          </section>
+
+          <section class="panel subview-panel" data-subview-group="appointments" data-subview="records">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Records</p>
+                <h2>Appointments and visit history</h2>
+              </div>
+            </div>
+            <div class="form-grid appointment-filters">
+              <label>
+                Search
+                <input id="appointmentSearchInput" type="search" placeholder="Search provider, specialty, reason, clinic" />
+              </label>
+              <label>
+                Type
+                <select id="recordTypeFilter">
+                  <option value="all">All records</option>
+                  <option value="appointments">Appointments only</option>
+                  <option value="visit-logs">Visit logs only</option>
+                </select>
+              </label>
+              <label>
+                Sort by date
+                <select id="recordSortSelect">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="upcoming">Upcoming first</option>
+                  <option value="overdue">Overdue first</option>
+                </select>
+              </label>
+              <label>
+                Status filter
+                <select id="appointmentStatusFilter">
+                  <option value="all">All statuses</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="soon">Due soon</option>
+                  <option value="has-history">Has visit history</option>
+                  <option value="missing-history">Missing visit history</option>
+                  <option value="follow-up-needed">Follow-up needed</option>
+                  <option value="waiting-on-results">Waiting on results</option>
+                  <option value="Planned">Planned</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                  <option value="Need to reschedule">Need to reschedule</option>
+                </select>
+              </label>
+              <label>
+                Specialty
+                <select id="appointmentSpecialtyFilter">
+                  <option value="all">All specialties</option>
+                </select>
+              </label>
+              <label>
+                Provider
+                <select id="appointmentProviderFilter">
+                  <option value="all">All providers</option>
+                </select>
+              </label>
+            </div>
+            <div class="visit-history-toolbar">
+              <div class="inline-row">
+                <button id="visitHistorySelectButton" class="button-secondary" type="button">Select</button>
+                <button id="visitHistoryDeleteSelectedButton" class="button-danger is-hidden" type="button">Delete Selected</button>
+                <button id="visitHistoryCancelSelectButton" class="button-secondary is-hidden" type="button">Cancel</button>
+                <button id="visitHistoryDeleteAllButton" class="button-danger" type="button">Delete All Visit Logs</button>
+              </div>
+            </div>
+            <div id="appointmentList" class="card-list empty-state"></div>
+          </section>
+        </section>
+
+        <section class="app-screen" data-screen="care-team">
+          <nav class="subtabbar" aria-label="Care Team Sections">
+            <button class="subtab-button is-active" type="button" data-subtab-group="care-team" data-subtab-target="providers">Providers</button>
+            <button class="subtab-button" type="button" data-subtab-group="care-team" data-subtab-target="activity">Activity</button>
+          </nav>
+
+          <section class="panel subview-panel is-active" data-subview-group="care-team" data-subview="providers">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Care Team</p>
+                <h2>Your providers in one place</h2>
+                <p class="meta">Provider details are grouped here so appointments can stay focused on visit tracking.</p>
+              </div>
+            </div>
+            <form id="providerForm" class="form-grid">
+              <label>
+                Provider
+                <input type="text" name="doctor" placeholder="Dr. Patel" required />
+              </label>
+              <label>
+                Specialty
+                <select name="specialty" id="providerSpecialtySelect"></select>
+              </label>
+              <label id="providerCustomSpecialtyLabel" class="full-span is-hidden">
+                Other specialty
+                <input type="text" name="customSpecialty" placeholder="Custom specialty" />
+              </label>
+              <label>
+                Clinic
+                <input type="text" name="clinic" placeholder="Austin Family Clinic" required />
+              </label>
+              <label>
+                Address
+                <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
+              </label>
+              <label>
+                Phone number
+                <input type="text" name="contactPhone" placeholder="Optional office number" />
+              </label>
+              <label>
+                Insurance accepted
+                <input type="text" name="insuranceAccepted" placeholder="Aetna, BCBS, self-pay" />
+              </label>
+              <label class="full-span">
+                Portal link
+                <input type="url" name="portalLink" placeholder="https://portal.example.com" />
+              </label>
+              <div class="inline-row full-span">
+                <button class="button-primary" type="submit">Add Provider</button>
+              </div>
+            </form>
+            <div id="careTeamList" class="card-list empty-state"></div>
+          </section>
+          <section class="panel subview-panel" data-subview-group="care-team" data-subview="activity">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Activity</p>
+                <h2>Visit logs across all providers</h2>
+              </div>
+            </div>
+            <div id="careTeamActivityList" class="card-list empty-state"></div>
+          </section>
+        </section>
+
+        <section class="app-screen" data-screen="insurance">
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Insurance</p>
+                <h2>Basic insurance information</h2>
+              </div>
+            </div>
+
+            <form id="insuranceForm" class="form-grid">
+              <label>
+                Insurance provider
+                <input type="text" name="provider" placeholder="Blue Cross Blue Shield" />
+              </label>
+              <label>
+                Plan name
+                <input type="text" name="planName" placeholder="PPO Silver" />
+              </label>
+              <label>
+                Member ID
+                <input type="text" name="memberId" placeholder="Member number" />
+              </label>
+              <label>
+                Group number
+                <input type="text" name="groupNumber" placeholder="Group number" />
+              </label>
+              <label>
+                Copay
+                <input type="text" name="copay" placeholder="$30 primary care" />
+              </label>
+              <label>
+                Insurance phone
+                <input type="text" name="phone" placeholder="Customer service number" />
+              </label>
+              <label class="full-span">
+                Notes
+                <textarea
+                  name="notes"
+                  rows="4"
+                  placeholder="Referral details, pharmacy info, claims notes, or support hours"
+                ></textarea>
+              </label>
+              <div class="inline-row full-span">
+                <button class="button-primary" type="submit">Save Insurance Info</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Saved Summary</p>
+                <h2>Insurance snapshot</h2>
+              </div>
+            </div>
+            <div id="insuranceSummary" class="card-list empty-state"></div>
+          </section>
+        </section>
+      </main>
+      <div class="sticky-action-bar">
+        <button id="stickyAddAppointmentButton" class="button-primary" type="button">Add Appointment</button>
+        <button id="stickyAddVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>
+        <button id="stickySearchButton" class="button-secondary" type="button">Search</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
