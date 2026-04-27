@@ -358,6 +358,10 @@ button {
   background: var(--primary-deep);
 }
 
+.form-entry-toggle .button-secondary:not(.is-active) {
+  background: rgba(15, 118, 110, 0.1);
+}
+
 .button-danger {
   color: white;
   background: linear-gradient(135deg, #c2410c, var(--danger));

@@ -1,4 +1,6 @@
 const STORAGE_KEY = "medical-appointment-tracker-v1";
+const STORAGE_VERSION = 2;
+const STORAGE_BACKUP_KEY = `${STORAGE_KEY}-backup`;
 const DEFAULT_PROVIDER_OPTIONS = ["Dr. Smith", "Dr. Patel", "Dr. Johnson", "Dentist Office", "Eye Doctor", "Primary Care"];
 const DEFAULT_SPECIALTY_OPTIONS = [
   "Primary care",
@@ -471,6 +473,8 @@ const recordTypeFilter = document.querySelector("#recordTypeFilter");
 const recordSortSelect = document.querySelector("#recordSortSelect");
 const showAddAppointmentFlow = document.querySelector("#showAddAppointmentFlow");
 const showLogPastVisitFlow = document.querySelector("#showLogPastVisitFlow");
+const appointmentModeButton = showAddAppointmentFlow;
+const visitLogModeButton = showLogPastVisitFlow;
 const visitLogFormMount = document.querySelector("#visitLogFormMount");
 const providerForm = document.querySelector("#providerForm");
 const providerSpecialtySelect = document.querySelector("#providerSpecialtySelect");
@@ -657,9 +661,13 @@ function setAddEditMode(mode) {
   visitLogForm.classList.toggle("is-hidden", !showingVisitLog);
   if (appointmentModeButton) {
     appointmentModeButton.classList.toggle("is-active", showingAppointment);
+    appointmentModeButton.classList.toggle("button-primary", showingAppointment);
+    appointmentModeButton.classList.toggle("button-secondary", !showingAppointment);
   }
   if (visitLogModeButton) {
     visitLogModeButton.classList.toggle("is-active", showingVisitLog);
+    visitLogModeButton.classList.toggle("button-primary", showingVisitLog);
+    visitLogModeButton.classList.toggle("button-secondary", !showingVisitLog);
   }
 }
 
@@ -796,8 +804,13 @@ function handleProviderSubmit(event) {
     return;
   }
 
-  state.appointments.unshift({
-    id: crypto.randomUUID(),
+  const providerKey = normalizeLookupKey(`${doctor}|${specialty}|${clinic}`);
+  const existingIndex = state.appointments.findIndex((appointment) => {
+    const appointmentClinic = cleanText(appointment.clinic) || extractClinicName(appointment.place);
+    return normalizeLookupKey(`${appointment.doctor}|${appointment.specialty}|${appointmentClinic}`) === providerKey;
+  });
+  const providerDetails = {
+    id: existingIndex >= 0 ? state.appointments[existingIndex].id : crypto.randomUUID(),
     title: getRecordTitle({ specialty, provider: doctor }),
     doctor,
     specialty,
@@ -806,6 +819,10 @@ function handleProviderSubmit(event) {
     contactPhone: cleanText(formData.get("contactPhone")),
     insuranceAccepted: cleanText(formData.get("insuranceAccepted")),
     portalLink: cleanText(formData.get("portalLink")),
+    updatedAt: new Date().toISOString(),
+  };
+  const providerRecord = {
+    ...providerDetails,
     appointmentDate: "",
     appointmentTime: "",
     appointmentStatus: "Planned",
@@ -818,11 +835,20 @@ function handleProviderSubmit(event) {
     medications: "",
     testResults: "",
     resultFiles: [],
-    visitHistory: [],
+    visitHistory: existingIndex >= 0 ? normalizeVisitHistory(state.appointments[existingIndex].visitHistory || []) : [],
     notes: "Care team provider profile.",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+    createdAt: existingIndex >= 0 ? state.appointments[existingIndex].createdAt || new Date().toISOString() : new Date().toISOString(),
+  };
+
+  if (existingIndex >= 0) {
+    state.appointments[existingIndex] = {
+      ...state.appointments[existingIndex],
+      ...providerDetails,
+      visitHistory: normalizeVisitHistory(state.appointments[existingIndex].visitHistory || []),
+    };
+  } else {
+    state.appointments.unshift(providerRecord);
+  }
 
   providerForm.reset();
   syncProviderCustomSpecialtyVisibility();
@@ -879,7 +905,7 @@ function handleAppointmentListClick(event) {
 
   const viewAllHistoryAppointmentId = event.target.closest("[data-view-all-history]")?.dataset.viewAllHistory;
   if (viewAllHistoryAppointmentId) {
-    openVisitLogTab(viewAllHistoryAppointmentId);
+    openProviderVisitLogsInRecords(viewAllHistoryAppointmentId);
     return;
   }
 
@@ -969,62 +995,23 @@ function handleRecommendationListClick(event) {
   }
 
   resetAppointmentForm();
+  setAddEditMode("appointment");
   setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, recommendation.specialty);
-  appointmentForm.elements.reasonForVisit.value = recommendation.title;
+  setSelectWithCustomValue(reasonSelect, appointmentForm.elements.customReasonForVisit, recommendation.title);
+  appointmentForm.elements.repeatVisit.checked = true;
   appointmentForm.elements.intervalMonths.value = recommendation.intervalMonths;
   appointmentForm.elements.reminderDaysBefore.value = 14;
   appointmentForm.elements.notes.value = `${recommendation.reason}\nSource: ${recommendation.sourceLabel}`;
+  syncRepeatRuleVisibility();
   syncCustomFieldVisibility();
   syncAppointmentPreview();
   switchScreen("appointments");
+  setSubtab("appointments", "form");
 }
 
 function handleVisitLogSubmit(event) {
   event.preventDefault();
-  const formData = new FormData(visitLogForm);
-  const appointmentId = cleanText(formData.get("visitLogAppointmentId"));
-  if (!appointmentId) {
-    visitHistoryGlobalList.innerHTML = `<p class="muted">Choose or create an appointment first.</p>`;
-    return;
-  }
-
-  const appointment = state.appointments.find((item) => item.id === appointmentId);
-  if (!appointment) {
-    visitHistoryGlobalList.innerHTML = `<p class="muted">Choose or create an appointment first.</p>`;
-    return;
-  }
-
-  const specialtyValue =
-    cleanText(formData.get("specialty")) === "__custom__"
-      ? cleanText(formData.get("customSpecialty"))
-      : cleanText(formData.get("specialty")) || appointment.specialty;
-  const nextLog = {
-    id: cleanText(formData.get("visitLogId")) || crypto.randomUUID(),
-    date: cleanText(formData.get("date")),
-    provider: appointment.doctor,
-    clinic: cleanText(formData.get("clinic")) || appointment.clinic || extractClinicName(appointment.place),
-    phone: appointment.contactPhone,
-    portalLink: appointment.portalLink,
-    insuranceAccepted: appointment.insuranceAccepted,
-    specialty: specialtyValue || appointment.specialty,
-    reason: cleanText(formData.get("reason")),
-    status: cleanText(formData.get("status")) || "Completed",
-    summary: cleanText(formData.get("summary")),
-    results: cleanText(formData.get("results")),
-    followUpNeeded: cleanText(formData.get("followUpNeeded")),
-    followUpDueDate: cleanText(formData.get("followUpDueDate")),
-    costCopay: cleanText(formData.get("costCopay")),
-  };
-
-  const currentHistory = normalizeVisitHistory(appointment.visitHistory || []);
-  const nextHistory = cleanText(formData.get("visitLogId"))
-    ? currentHistory.map((item) => (item.id === cleanText(formData.get("visitLogId")) ? nextLog : item))
-    : [nextLog, ...currentHistory];
-
-  appointment.visitHistory = normalizeVisitHistory(nextHistory);
-  persist();
-  resetVisitLogForm();
-  render();
+  saveVisitLog();
 }
 
 function handleVisitHistoryEditorClick(event) {
@@ -2036,6 +2023,19 @@ function deleteRecordsByIds(idsToDelete) {
   render();
 }
 
+function openProviderVisitLogsInRecords(appointmentId) {
+  const appointment = state.appointments.find((item) => item.id === appointmentId);
+  if (!appointment) {
+    return;
+  }
+
+  switchScreen("appointments");
+  setSubtab("appointments", "records");
+  recordTypeFilter.value = "visit-logs";
+  appointmentSearchInput.value = appointment.doctor || appointment.specialty || "";
+  render();
+}
+
 function getVisitLogProviderKey(entry) {
   return normalizeLookupKey(entry.provider);
 }
@@ -2243,7 +2243,7 @@ function resetVisitLogFormExceptProvider() {
   syncVisitLogProviderSelection();
 }
 
-function saveVisitLog({ addAnother = false } = {}) {
+function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
   const formData = new FormData(visitLogForm);
   const appointmentId = cleanText(formData.get("visitLogAppointmentId"));
   if (!appointmentId) {
@@ -2279,6 +2279,13 @@ function saveVisitLog({ addAnother = false } = {}) {
     costCopay: cleanText(formData.get("costCopay")),
   };
 
+  if (scheduleFollowUp && !isValidIsoDate(nextLog.followUpDueDate)) {
+    visitLogForm.elements.followUpDueDate.setCustomValidity("Add a follow-up due date before scheduling.");
+    visitLogForm.elements.followUpDueDate.reportValidity();
+    visitLogForm.elements.followUpDueDate.setCustomValidity("");
+    return false;
+  }
+
   const currentHistory = normalizeVisitHistory(appointment.visitHistory || []);
   appointment.visitHistory = normalizeVisitHistory(
     cleanText(formData.get("visitLogId"))
@@ -2288,6 +2295,12 @@ function saveVisitLog({ addAnother = false } = {}) {
 
   if (appointment.appointmentStatus !== "Cancelled" && ["Planned", "Scheduled"].includes(appointment.appointmentStatus)) {
     appointment.appointmentStatus = "Completed";
+  }
+
+  if (scheduleFollowUp) {
+    appointment.nextRecommendedVisit = nextLog.followUpDueDate;
+    appointment.reminderEnabled = appointment.reminderEnabled !== false;
+    appointment.updatedAt = new Date().toISOString();
   }
 
   persist();
@@ -2545,32 +2558,76 @@ function statusPill(status) {
 }
 
 function loadState() {
-  const emptyState = {
+  const emptyState = getEmptyState();
+
+  try {
+    const rawSavedState = localStorage.getItem(STORAGE_KEY);
+    if (!rawSavedState) {
+      return emptyState;
+    }
+
+    const saved = JSON.parse(rawSavedState);
+    const savedData = saved?.version && saved?.data ? saved.data : saved;
+    return normalizeState(savedData);
+  } catch (error) {
+    console.warn("Could not load saved tracker data. Trying backup.", error);
+  }
+
+  try {
+    const rawBackupState = localStorage.getItem(STORAGE_BACKUP_KEY);
+    if (!rawBackupState) {
+      return emptyState;
+    }
+    const backup = JSON.parse(rawBackupState);
+    const backupData = backup?.version && backup?.data ? backup.data : backup;
+    return normalizeState(backupData);
+  } catch (error) {
+    console.warn("Could not load backup tracker data.", error);
+    return emptyState;
+  }
+}
+
+function getEmptyState() {
+  return {
     appointments: [],
     insurance: {},
     profile: {},
     deletedSeedKeys: [],
     lastNotificationDate: "",
   };
+}
 
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return {
-      appointments: normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []),
-      insurance: saved?.insurance && typeof saved.insurance === "object" ? saved.insurance : {},
-      profile: saved?.profile && typeof saved.profile === "object" ? saved.profile : {},
-      deletedSeedKeys: Array.isArray(saved?.deletedSeedKeys)
-        ? saved.deletedSeedKeys.map((item) => cleanText(item)).filter(Boolean)
-        : [],
-      lastNotificationDate: cleanText(saved?.lastNotificationDate),
-    };
-  } catch {
-    return emptyState;
-  }
+function normalizeState(saved) {
+  const emptyState = getEmptyState();
+  return {
+    ...emptyState,
+    appointments: normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []),
+    insurance: saved?.insurance && typeof saved.insurance === "object" ? saved.insurance : {},
+    profile: saved?.profile && typeof saved.profile === "object" ? saved.profile : {},
+    deletedSeedKeys: Array.isArray(saved?.deletedSeedKeys)
+      ? saved.deletedSeedKeys.map((item) => cleanText(item)).filter(Boolean)
+      : [],
+    lastNotificationDate: cleanText(saved?.lastNotificationDate),
+  };
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    const existingState = localStorage.getItem(STORAGE_KEY);
+    if (existingState) {
+      localStorage.setItem(STORAGE_BACKUP_KEY, existingState);
+    }
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: STORAGE_VERSION,
+        savedAt: new Date().toISOString(),
+        data: normalizeState(state),
+      })
+    );
+  } catch (error) {
+    console.warn("Could not save tracker data to localStorage.", error);
+  }
 }
 
 function mergeInitialAppointmentLogs() {
