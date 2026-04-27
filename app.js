@@ -446,10 +446,6 @@ const insuranceSummary = document.querySelector("#insuranceSummary");
 const heroReminderCount = document.querySelector("#heroReminderCount");
 const heroProviderCount = document.querySelector("#heroProviderCount");
 const quickAddButton = document.querySelector("#quickAddButton");
-const newAppointmentButton = document.querySelector("#newAppointmentButton");
-const jumpToVisitLogButton = document.querySelector("#jumpToVisitLogButton");
-const jumpToNotesButton = document.querySelector("#jumpToNotesButton");
-const jumpToFilesButton = document.querySelector("#jumpToFilesButton");
 const dashboardAddAppointmentButton = document.querySelector("#dashboardAddAppointmentButton");
 const dashboardAddVisitLogButton = document.querySelector("#dashboardAddVisitLogButton");
 const dashboardViewCareTeamButton = document.querySelector("#dashboardViewCareTeamButton");
@@ -465,14 +461,16 @@ const recommendationList = document.querySelector("#recommendationList");
 const providerSelect = document.querySelector("#providerSelect");
 const specialtySelect = document.querySelector("#specialtySelect");
 const reasonSelect = document.querySelector("#reasonSelect");
+const repeatVisitToggle = document.querySelector("#repeatVisitToggle");
+const repeatRuleGroup = document.querySelector("#repeatRuleGroup");
 const appointmentSearchInput = document.querySelector("#appointmentSearchInput");
 const appointmentStatusFilter = document.querySelector("#appointmentStatusFilter");
 const appointmentSpecialtyFilter = document.querySelector("#appointmentSpecialtyFilter");
 const appointmentProviderFilter = document.querySelector("#appointmentProviderFilter");
 const recordTypeFilter = document.querySelector("#recordTypeFilter");
 const recordSortSelect = document.querySelector("#recordSortSelect");
-const appointmentModeButton = document.querySelector("#appointmentModeButton");
-const visitLogModeButton = document.querySelector("#visitLogModeButton");
+const showAddAppointmentFlow = document.querySelector("#showAddAppointmentFlow");
+const showLogPastVisitFlow = document.querySelector("#showLogPastVisitFlow");
 const visitLogFormMount = document.querySelector("#visitLogFormMount");
 const providerForm = document.querySelector("#providerForm");
 const providerSpecialtySelect = document.querySelector("#providerSpecialtySelect");
@@ -490,6 +488,7 @@ const visitLogSpecialtySelect = document.querySelector("#visitLogSpecialtySelect
 const visitLogCustomSpecialtyLabel = document.querySelector("#visitLogCustomSpecialtyLabel");
 const visitLogQuickSaveButton = document.querySelector("#visitLogQuickSaveButton");
 const visitLogSaveAddAnotherButton = document.querySelector("#visitLogSaveAddAnotherButton");
+const visitLogSaveFollowUpButton = document.querySelector("#visitLogSaveFollowUpButton");
 const visitLogLastAppointmentInfo = document.querySelector("#visitLogLastAppointmentInfo");
 const visitLogSubmitButton = document.querySelector("#visitLogSubmitButton");
 const visitLogCancelButton = document.querySelector("#visitLogCancelButton");
@@ -522,7 +521,7 @@ bindEvents();
 mergeInitialAppointmentLogs();
 syncForms();
 mountVisitLogForm();
-setAddEditMode("appointment");
+setAddEditMode("none");
 render();
 maybeSendBrowserNotifications();
 
@@ -536,6 +535,9 @@ function bindEvents() {
   visitLogQuickTemplate.addEventListener("change", handleVisitLogTemplateChange);
   visitLogQuickSaveButton.addEventListener("click", () => saveVisitLog({ addAnother: false }));
   visitLogSaveAddAnotherButton.addEventListener("click", () => saveVisitLog({ addAnother: true }));
+  if (visitLogSaveFollowUpButton) {
+    visitLogSaveFollowUpButton.addEventListener("click", () => saveVisitLog({ addAnother: false, scheduleFollowUp: true }));
+  }
   appointmentCancelButton.addEventListener("click", resetAppointmentForm);
   visitLogCancelButton.addEventListener("click", resetVisitLogForm);
   appointmentList.addEventListener("click", handleAppointmentListClick);
@@ -562,8 +564,12 @@ function bindEvents() {
   appointmentProviderFilter.addEventListener("change", render);
   recordTypeFilter.addEventListener("change", render);
   recordSortSelect.addEventListener("change", render);
-  appointmentModeButton.addEventListener("click", () => setAddEditMode("appointment"));
-  visitLogModeButton.addEventListener("click", () => setAddEditMode("visit-log"));
+  if (showAddAppointmentFlow) {
+    showAddAppointmentFlow.addEventListener("click", () => openEntryFlow("appointment"));
+  }
+  if (showLogPastVisitFlow) {
+    showLogPastVisitFlow.addEventListener("click", () => openEntryFlow("visit-log"));
+  }
   quickAddButton.addEventListener("click", () => {
     openAppointmentForm();
   });
@@ -576,19 +582,6 @@ function bindEvents() {
     setSubtab("care-team", "providers");
   });
   dashboardInsuranceButton.addEventListener("click", () => switchScreen("insurance"));
-  newAppointmentButton.addEventListener("click", () => {
-    setAddEditMode("appointment");
-    resetAppointmentForm();
-  });
-  jumpToVisitLogButton.addEventListener("click", () => {
-    openVisitLogTab(editingAppointmentId || "");
-  });
-  jumpToNotesButton.addEventListener("click", () => {
-    document.querySelector("#notesSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
-  jumpToFilesButton.addEventListener("click", () => {
-    document.querySelector("#filesSection")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  });
   stickySearchButton.addEventListener("click", () => {
     switchScreen("appointments");
     setSubtab("appointments", "records");
@@ -607,6 +600,12 @@ function bindEvents() {
   providerSpecialtySelect.addEventListener("change", syncProviderCustomSpecialtyVisibility);
   visitLogProviderSelect.addEventListener("change", syncVisitLogProviderSelection);
   visitLogSpecialtySelect.addEventListener("change", syncVisitLogCustomSpecialtyVisibility);
+  if (repeatVisitToggle) {
+    repeatVisitToggle.addEventListener("change", () => {
+      syncRepeatRuleVisibility();
+      syncAppointmentPreview();
+    });
+  }
   ["appointmentDate", "nextRecommendedVisit", "intervalMonths", "reminderDaysBefore"].forEach((fieldName) => {
     appointmentForm.elements[fieldName].addEventListener("input", syncAppointmentPreview);
   });
@@ -633,6 +632,16 @@ function openVisitLogTab(appointmentId = "", setToday = false) {
   }
 }
 
+function openEntryFlow(mode) {
+  if (mode === "appointment") {
+    setAddEditMode("appointment");
+    resetAppointmentForm();
+  } else if (mode === "visit-log") {
+    setAddEditMode("visit-log");
+    resetVisitLogForm();
+  }
+}
+
 function mountVisitLogForm() {
   if (visitLogFormMount && visitLogForm.parentElement !== visitLogFormMount) {
     visitLogFormMount.appendChild(visitLogForm);
@@ -642,10 +651,15 @@ function mountVisitLogForm() {
 function setAddEditMode(mode) {
   activeAddEditMode = mode;
   const showingAppointment = mode === "appointment";
+  const showingVisitLog = mode === "visit-log";
   appointmentForm.classList.toggle("is-hidden", !showingAppointment);
-  visitLogForm.classList.toggle("is-hidden", showingAppointment);
-  appointmentModeButton.classList.toggle("is-active", showingAppointment);
-  visitLogModeButton.classList.toggle("is-active", !showingAppointment);
+  visitLogForm.classList.toggle("is-hidden", !showingVisitLog);
+  if (appointmentModeButton) {
+    appointmentModeButton.classList.toggle("is-active", showingAppointment);
+  }
+  if (visitLogModeButton) {
+    visitLogModeButton.classList.toggle("is-active", showingVisitLog);
+  }
 }
 
 function setSubtab(group, target) {
@@ -676,7 +690,6 @@ function handleAppointmentSubmit(event) {
     : [];
   const appointment = {
     id: cleanText(formData.get("appointmentId")) || crypto.randomUUID(),
-    title: cleanText(formData.get("title")),
     doctor:
       cleanText(formData.get("doctor")) === "__custom__"
         ? cleanText(formData.get("customDoctor"))
@@ -693,7 +706,10 @@ function handleAppointmentSubmit(event) {
     appointmentTime: cleanText(formData.get("appointmentTime")),
     appointmentStatus: cleanText(formData.get("appointmentStatus")) || "Planned",
     nextRecommendedVisit: cleanText(formData.get("nextRecommendedVisit")),
-    intervalMonths: numberOrFallback(formData.get("intervalMonths"), 1),
+    intervalMonths:
+      formData.get("repeatVisit") === "on"
+        ? numberOrFallback(formData.get("intervalMonths"), 1)
+        : null,
     reminderDaysBefore: numberOrFallback(formData.get("reminderDaysBefore"), 0),
     reminderEnabled: cleanText(formData.get("reminderEnabled")) !== "no",
     contactPhone: cleanText(formData.get("contactPhone")),
@@ -710,7 +726,7 @@ function handleAppointmentSubmit(event) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (!appointment.title || !appointment.doctor) {
+  if (!appointment.doctor) {
     return;
   }
 
@@ -777,7 +793,7 @@ function handleProviderSubmit(event) {
 
   state.appointments.unshift({
     id: crypto.randomUUID(),
-    title: `${doctor} provider profile`,
+    title: getRecordTitle({ specialty, provider: doctor }),
     doctor,
     specialty,
     clinic,
@@ -948,8 +964,8 @@ function handleRecommendationListClick(event) {
   }
 
   resetAppointmentForm();
-  appointmentForm.elements.title.value = recommendation.title;
   setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, recommendation.specialty);
+  appointmentForm.elements.reasonForVisit.value = recommendation.title;
   appointmentForm.elements.intervalMonths.value = recommendation.intervalMonths;
   appointmentForm.elements.reminderDaysBefore.value = 14;
   appointmentForm.elements.notes.value = `${recommendation.reason}\nSource: ${recommendation.sourceLabel}`;
@@ -1146,7 +1162,6 @@ function loadAppointmentIntoForm(appointmentId) {
 
   editingAppointmentId = appointment.id;
   appointmentForm.elements.appointmentId.value = appointment.id;
-  appointmentForm.elements.title.value = appointment.title || "";
   setSelectWithCustomValue(providerSelect, appointmentForm.elements.customDoctor, appointment.doctor || "");
   setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, appointment.specialty || "");
   appointmentForm.elements.clinic.value = appointment.clinic || extractClinicName(appointment.place) || "";
@@ -1157,7 +1172,9 @@ function loadAppointmentIntoForm(appointmentId) {
   appointmentForm.elements.appointmentTime.value = appointment.appointmentTime || "";
   appointmentForm.elements.appointmentStatus.value = appointment.appointmentStatus || "Planned";
   appointmentForm.elements.nextRecommendedVisit.value = appointment.nextRecommendedVisit || "";
+  appointmentForm.elements.repeatVisit.checked = Boolean(appointment.intervalMonths);
   appointmentForm.elements.intervalMonths.value = appointment.intervalMonths ?? 1;
+  syncRepeatRuleVisibility();
   appointmentForm.elements.reminderDaysBefore.value = appointment.reminderDaysBefore ?? 0;
   appointmentForm.elements.reminderEnabled.value = appointment.reminderEnabled === false ? "no" : "yes";
   appointmentForm.elements.contactPhone.value = appointment.contactPhone || "";
@@ -1177,7 +1194,9 @@ function resetAppointmentForm() {
   editingAppointmentId = "";
   appointmentForm.reset();
   appointmentForm.elements.appointmentId.value = "";
+  appointmentForm.elements.repeatVisit.checked = false;
   appointmentForm.elements.intervalMonths.value = 6;
+  syncRepeatRuleVisibility();
   appointmentForm.elements.reminderDaysBefore.value = 14;
   appointmentForm.elements.reminderEnabled.value = "yes";
   appointmentForm.elements.appointmentStatus.value = "Planned";
@@ -1253,8 +1272,8 @@ function renderReminderList(reminderItems) {
             <article class="reminder-card">
               <div class="card-head">
                 <div>
-                  <strong>${escapeHtml(item.title)}</strong>
-                  <span class="meta">${escapeHtml(item.doctor)} at ${escapeHtml(item.clinic || extractClinicName(item.place) || item.place)}</span>
+                  <strong>${escapeHtml(getRecordTitle(item))}</strong>
+                  <span class="meta">${escapeHtml(item.reasonForVisit || item.doctor || "No provider saved")}</span>
                 </div>
                 ${statusPill(item.reminderStatus)}
               </div>
@@ -1280,8 +1299,8 @@ function renderAppointmentLists(summaries) {
             <details class="appointment-card appointment-dropdown">
               <summary class="appointment-summary">
                 <div>
-                  <strong>${escapeHtml(item.title)}</strong>
-                  <span class="meta">${escapeHtml(item.specialty || "General")} • ${escapeHtml(item.doctor)}</span>
+                  <strong>${escapeHtml(getRecordTitle(item))}</strong>
+                  <span class="meta">${escapeHtml(item.reasonForVisit || "No reason saved")}</span>
                   <span class="meta">Clinic: ${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
                   <span class="meta">Status: ${escapeHtml(item.appointmentStatus || "Planned")} • Next: ${formatDate(item.nextVisitDate)} • Appointment: ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
                 </div>
@@ -1366,6 +1385,22 @@ function renderAppointmentLists(summaries) {
 
   appointmentList.innerHTML = renderRecordsList(summaries);
   dashboardAppointmentList.innerHTML = markup;
+}
+
+function getRecordTitle(record) {
+  const specialty = cleanText(record.specialty);
+  const provider = cleanText(record.provider || record.doctor);
+
+  if (specialty && provider) {
+    return `${specialty} • ${provider}`;
+  }
+  if (specialty) {
+    return specialty;
+  }
+  if (provider) {
+    return provider;
+  }
+  return "Visit";
 }
 
 function renderAppointmentFilters() {
@@ -1521,8 +1556,8 @@ function renderAppointmentRecordCard(item) {
         }
         <div>
           <span class="pill ok">Appointment</span>
-          <strong>${escapeHtml(item.title)}</strong>
-          <span class="meta">${escapeHtml(item.specialty || "General")} • ${escapeHtml(item.doctor)}</span>
+          <strong>${escapeHtml(getRecordTitle(item))}</strong>
+          <span class="meta">${escapeHtml(item.reasonForVisit || "No reason saved")}</span>
           <span class="meta">Clinic: ${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
           <span class="meta">Status: ${escapeHtml(item.appointmentStatus || "Planned")} • Next: ${formatDate(item.nextVisitDate)} • Appointment: ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
         </div>
@@ -1562,10 +1597,9 @@ function renderVisitLogRecordCard(entry) {
         }
         <div>
           <span class="pill ok">Visit Log</span>
-          <strong>${formatDate(entry.date)}</strong>
+          <strong>${escapeHtml(getRecordTitle(entry))}</strong>
           <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
-          <span class="meta">${escapeHtml(entry.provider || "Unknown provider")} • ${escapeHtml(entry.specialty || "General")}</span>
-          <span class="meta">${escapeHtml(entry.clinic || "No clinic saved")}</span>
+          <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
         </div>
         <div class="inline-row">
           <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
@@ -1679,7 +1713,7 @@ function renderCareTeam() {
                       .map(
                         (item) => `
                           <article class="summary-card">
-                            <div class="summary-row"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.appointmentStatus || "Planned")}</span></div>
+                            <div class="summary-row"><strong>${escapeHtml(getRecordTitle(item))}</strong><span>${escapeHtml(item.appointmentStatus || "Planned")}</span></div>
                             <div class="summary-row"><strong>Next visit</strong><span>${formatDate(item.nextVisitDate)}</span></div>
                             <div class="summary-row"><strong>Reason</strong><span>${escapeHtml(item.reasonForVisit || "Not saved")}</span></div>
                           </article>
@@ -1705,9 +1739,9 @@ function renderCareTeamActivity() {
             <article class="summary-card">
               <div class="card-head">
                 <div>
-                  <strong>${escapeHtml(entry.provider || "Unknown provider")}</strong>
-                  <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.reason || "No reason saved")}</span>
-                  <span class="meta">${escapeHtml(entry.specialty || "General")}</span>
+                  <strong>${escapeHtml(getRecordTitle(entry))}</strong>
+                  <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
+                  <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.specialty || entry.provider || "Visit")}</span>
                 </div>
                 <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
               </div>
@@ -1780,10 +1814,9 @@ function renderVisitHistoryGlobalList() {
                     : ""
                 }
                 <div>
-                  <strong>${formatDate(entry.date)}</strong>
+                  <strong>${escapeHtml(getRecordTitle(entry))}</strong>
                   <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
-                  <span class="meta">${escapeHtml(entry.provider || "Unknown provider")} • ${escapeHtml(entry.specialty || "General")}</span>
-                  <span class="meta">${escapeHtml(entry.clinic || "No clinic saved")}</span>
+                  <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
                 </div>
                 <div class="inline-row">
                   <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
@@ -2397,6 +2430,7 @@ function buildAppointmentSummary(appointment) {
 
   return {
     ...appointment,
+    title: getRecordTitle(appointment),
     visitHistory: normalizedHistory,
     lastVisitDate: lastVisitDate || "",
     nextVisitDate,
@@ -2410,7 +2444,8 @@ function syncAppointmentPreview() {
   const latestVisitDate = getLatestVisitDate(editingVisitHistory);
   const appointmentDate = cleanText(appointmentForm.elements.appointmentDate.value);
   const nextRecommendedVisit = cleanText(appointmentForm.elements.nextRecommendedVisit.value);
-  const intervalMonths = numberOrFallback(appointmentForm.elements.intervalMonths.value, 0);
+  const repeatEnabled = appointmentForm.elements.repeatVisit?.checked;
+  const intervalMonths = repeatEnabled ? numberOrFallback(appointmentForm.elements.intervalMonths.value, 0) : 0;
   const reminderDaysBefore = numberOrFallback(appointmentForm.elements.reminderDaysBefore.value, 0);
   const anchorDate = latestVisitDate || appointmentDate;
 
@@ -2459,7 +2494,7 @@ function maybeSendBrowserNotifications() {
 
   const topItem = reminderItems[0];
   new Notification("Appointment reminder", {
-    body: `${topItem.title} with ${topItem.doctor} is ${topItem.reminderStatus === "overdue" ? "overdue" : "coming up soon"}.`,
+    body: `${getRecordTitle(topItem)} is ${topItem.reminderStatus === "overdue" ? "overdue" : "coming up soon"}.`,
   });
   state.lastNotificationDate = today;
   persist();
@@ -2639,6 +2674,17 @@ function syncCustomFieldVisibility() {
   customProviderLabel.classList.toggle("is-hidden", providerSelect.value !== "__custom__");
   customSpecialtyLabel.classList.toggle("is-hidden", specialtySelect.value !== "__custom__");
   customReasonLabel.classList.toggle("is-hidden", reasonSelect.value !== "__custom__");
+}
+
+function syncRepeatRuleVisibility() {
+  const repeatEnabled = repeatVisitToggle?.checked;
+  repeatRuleGroup?.classList.toggle("is-hidden", !repeatEnabled);
+  if (appointmentForm?.elements.intervalMonths) {
+    appointmentForm.elements.intervalMonths.required = Boolean(repeatEnabled);
+    if (!repeatEnabled) {
+      appointmentForm.elements.intervalMonths.setCustomValidity("");
+    }
+  }
 }
 
 function setSelectWithCustomValue(select, customInput, value) {

@@ -182,27 +182,16 @@
                   Suggested next visit dates are calculated from the rule you choose and are not medical advice.
                 </p>
               </div>
-              <div class="inline-row">
-                <button id="newAppointmentButton" class="button-primary" type="button">Add New</button>
-                <button id="jumpToVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>
-                <button id="jumpToNotesButton" class="button-secondary" type="button">Notes</button>
-                <button id="jumpToFilesButton" class="button-secondary" type="button">Files</button>
-              </div>
             </div>
-            <div class="segmented-control" aria-label="Choose record type">
-              <button id="appointmentModeButton" class="button-secondary is-active" type="button">Appointment</button>
-              <button id="visitLogModeButton" class="button-secondary" type="button">Visit Log</button>
+            <div class="inline-row form-entry-toggle">
+              <button id="showAddAppointmentFlow" class="button-primary large" type="button">Add Appointment</button>
+              <button id="showLogPastVisitFlow" class="button-secondary large" type="button">Log Past Visit</button>
             </div>
-
-            <form id="appointmentForm" class="form-grid">
+            <form id="appointmentForm" class="form-grid is-hidden">
               <input type="hidden" name="appointmentId" />
               <details class="full-span form-section" open>
                 <summary class="form-section-summary">Basic Info</summary>
                 <div class="form-grid form-section-body">
-                  <label>
-                    Visit label
-                    <input type="text" name="title" placeholder="Dental cleaning" required />
-                  </label>
                   <label>
                     Provider
                     <select name="doctor" id="providerSelect" required></select>
@@ -221,23 +210,7 @@
                   </label>
                   <label>
                     Clinic
-                    <input type="text" name="clinic" placeholder="Austin Family Dental" />
-                  </label>
-                  <label>
-                    Address
-                    <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
-                  </label>
-                  <label>
-                    Phone number
-                    <input type="text" name="contactPhone" placeholder="Optional office number" />
-                  </label>
-                  <label>
-                    Insurance accepted
-                    <input type="text" name="insuranceAccepted" placeholder="Aetna, BCBS, self-pay" />
-                  </label>
-                  <label>
-                    Portal link
-                    <input type="url" name="portalLink" placeholder="https://portal.example.com" />
+                    <input type="text" name="clinic" placeholder="Austin Family Clinic" />
                   </label>
                   <label>
                     Appointment date
@@ -257,17 +230,44 @@
                       <option>Need to reschedule</option>
                     </select>
                   </label>
-                  <label>
-                    Override next recommended visit (optional)
-                    <input type="date" name="nextRecommendedVisit" />
+                  <label class="full-span repeat-toggle">
+                    <input type="checkbox" name="repeatVisit" id="repeatVisitToggle" />
+                    Repeat visit?
                   </label>
-                  <label>
-                    Rule: repeat every X months
-                    <input type="number" name="intervalMonths" min="1" step="1" placeholder="6" required />
-                  </label>
+                  <div id="repeatRuleGroup" class="full-span is-hidden">
+                    <label>
+                      Rule: repeat every X months
+                      <input type="number" name="intervalMonths" min="1" step="1" placeholder="6" />
+                    </label>
+                  </div>
                   <label>
                     Remind me X days before
                     <input type="number" name="reminderDaysBefore" min="0" step="1" placeholder="14" required />
+                  </label>
+                </div>
+              </details>
+              <details class="full-span form-section more-details">
+                <summary class="form-section-summary">More details</summary>
+                <div class="form-grid form-section-body">
+                  <label>
+                    Address
+                    <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
+                  </label>
+                  <label>
+                    Phone number
+                    <input type="text" name="contactPhone" placeholder="Optional office number" />
+                  </label>
+                  <label>
+                    Insurance accepted
+                    <input type="text" name="insuranceAccepted" placeholder="Aetna, BCBS, self-pay" />
+                  </label>
+                  <label>
+                    Portal link
+                    <input type="url" name="portalLink" placeholder="https://portal.example.com" />
+                  </label>
+                  <label>
+                    Override next recommended visit (optional)
+                    <input type="date" name="nextRecommendedVisit" />
                   </label>
                   <label>
                     Reminder notifications
@@ -284,11 +284,6 @@
                     Custom reason for visit
                     <input type="text" name="customReasonForVisit" placeholder="Follow-up, annual exam, screening, symptoms" />
                   </label>
-                </div>
-              </details>
-              <details class="full-span form-section" id="notesSection">
-                <summary class="form-section-summary">Notes</summary>
-                <div class="form-grid form-section-body">
                   <label class="full-span">
                     Notes / questions to ask
                     <textarea
@@ -321,11 +316,6 @@
                       placeholder="Hours, prep instructions, parking details, or what to ask next time"
                     ></textarea>
                   </label>
-                </div>
-              </details>
-              <details class="full-span form-section" id="filesSection">
-                <summary class="form-section-summary">Files</summary>
-                <div class="form-grid form-section-body">
                   <label class="full-span">
                     Test result files
                     <input type="file" name="resultFiles" multiple />
@@ -400,6 +390,7 @@
                 </div>
                 <div class="inline-row quick-log-actions">
                   <button id="visitLogQuickSaveButton" class="button-primary" type="button">Save Quick Log</button>
+                  <button id="visitLogSaveFollowUpButton" class="button-secondary" type="button">Save + Schedule Follow-up</button>
                   <button id="visitLogSaveAddAnotherButton" class="button-secondary" type="button">Save & Add Another</button>
                 </div>
                 <p id="visitLogLastAppointmentInfo" class="meta">Choose a provider to autofill clinic, specialty, and reason.</p>
