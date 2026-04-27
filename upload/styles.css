@@ -1,0 +1,561 @@
+:root {
+  --bg: #f4efe8;
+  --bg-soft: #fbf7f2;
+  --panel: rgba(255, 252, 247, 0.92);
+  --text: #1f2933;
+  --muted: #5f6c77;
+  --line: rgba(49, 68, 82, 0.14);
+  --primary: #0f766e;
+  --primary-deep: #134e4a;
+  --accent: #b45309;
+  --danger: #b42318;
+  --warn: #a16207;
+  --success: #1f7a4d;
+  --shadow: 0 18px 40px rgba(30, 41, 59, 0.12);
+  --radius: 24px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 24%),
+    radial-gradient(circle at top right, rgba(180, 83, 9, 0.14), transparent 28%),
+    linear-gradient(180deg, #f8f4ee 0%, #efe7db 100%);
+}
+
+.app-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 20px 0 120px;
+}
+
+.hero,
+.panel,
+.stat-card,
+.appointment-card,
+.reminder-card,
+.summary-card,
+.recommendation-card,
+.preview-card {
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.hero,
+.panel {
+  border-radius: 32px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.35fr 0.9fr;
+  gap: 24px;
+  padding: 22px;
+}
+
+.hero h1,
+.section-heading h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 3.2vw, 3.2rem);
+  line-height: 0.95;
+  max-width: 10ch;
+}
+
+.hero-copy,
+.meta,
+.empty-state,
+.muted {
+  color: var(--muted);
+}
+
+.hero-copy {
+  max-width: 58ch;
+  line-height: 1.6;
+}
+
+.hero-panel,
+.card-list,
+.stats-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.hero-dropdown {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow);
+}
+
+.hero-dropdown-button {
+  display: block;
+  width: 100%;
+  list-style: none;
+  text-align: left;
+}
+
+.hero-dropdown-button::-webkit-details-marker {
+  display: none;
+}
+
+.hero-dropdown-panel {
+  display: grid;
+  gap: 16px;
+  padding: 0 18px 18px;
+}
+
+.stat-card,
+.preview-card,
+.appointment-card,
+.reminder-card,
+.summary-card,
+.recommendation-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.stat-card span,
+.summary-row span,
+.meta {
+  display: block;
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.8rem;
+}
+
+.tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 8px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.09);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabbar-button,
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.tabbar-button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.tabbar-button.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+}
+
+.screen-stack {
+  margin-top: 22px;
+}
+
+.subtabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subtab-button {
+  color: var(--primary-deep);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.subtab-button.is-active {
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+}
+
+.app-screen {
+  display: none;
+  gap: 22px;
+}
+
+.app-screen.is-active {
+  display: grid;
+}
+
+.panel {
+  padding: 24px;
+}
+
+.subview-panel {
+  display: none;
+}
+
+.subview-panel.is-active {
+  display: block;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+}
+
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.quick-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.full-span {
+  grid-column: 1 / -1;
+}
+
+.form-section {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.form-section-summary {
+  padding: 16px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.form-section-summary::-webkit-details-marker {
+  display: none;
+}
+
+.form-section-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--line);
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(49, 68, 82, 0.18);
+  border-radius: 16px;
+  padding: 13px 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button-primary {
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+}
+
+.button-secondary {
+  color: var(--primary-deep);
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.button-secondary.is-active {
+  color: white;
+  background: var(--primary-deep);
+}
+
+.button-danger {
+  color: white;
+  background: linear-gradient(135deg, #c2410c, var(--danger));
+}
+
+.inline-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.segmented-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.card-list {
+  min-height: 24px;
+}
+
+.visit-history-toolbar {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.select-check {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+  color: var(--primary-deep);
+}
+
+.appointment-card,
+.reminder-card,
+.recommendation-card {
+  display: grid;
+  gap: 12px;
+}
+
+.appointment-dropdown {
+  padding: 0;
+  overflow: hidden;
+}
+
+.appointment-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.appointment-summary::-webkit-details-marker {
+  display: none;
+}
+
+.appointment-dropdown-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--line);
+}
+
+.nested-dropdown {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.nested-summary {
+  padding: 14px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.nested-summary::-webkit-details-marker {
+  display: none;
+}
+
+.nested-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.card-head,
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.pill.ok {
+  color: var(--success);
+  background: rgba(31, 122, 77, 0.12);
+}
+
+.pill.soon {
+  color: var(--warn);
+  background: rgba(161, 98, 7, 0.14);
+}
+
+.pill.overdue {
+  color: var(--danger);
+  background: rgba(180, 35, 24, 0.12);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px 16px;
+}
+
+.detail-grid span strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.source-link {
+  color: var(--primary-deep);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.visit-log-editor {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.inline-visit-log-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.compact-heading {
+  margin-bottom: 0;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.sticky-action-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 252, 247, 0.92);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 840px) {
+  .hero,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell {
+    width: min(100% - 20px, 1120px);
+    padding-top: 20px;
+  }
+
+  .section-heading,
+  .card-head,
+  .summary-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tabbar {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .tabbar-button,
+  .subtab-button {
+    flex: 0 0 auto;
+  }
+
+  .sticky-action-bar {
+    left: 0;
+    right: 0;
+    border-radius: 24px;
+    justify-content: stretch;
+  }
+
+  .sticky-action-bar button {
+    flex: 1 1 0;
+  }
+}
