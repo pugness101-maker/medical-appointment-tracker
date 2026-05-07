@@ -643,6 +643,28 @@ function bindEvents() {
   subtabButtons.forEach((button) =>
     button.addEventListener("click", () => setSubtab(button.dataset.subtabGroup, button.dataset.subtabTarget))
   );
+
+  document.body.addEventListener("click", (event) => {
+    const targetButton = event.target.closest("[data-screen-target]");
+    if (targetButton) {
+      event.preventDefault();
+      switchScreen(targetButton.dataset.screenTarget);
+      return;
+    }
+
+    const actionButton = event.target.closest("[data-action=add]");
+    if (actionButton) {
+      event.preventDefault();
+      openAppointmentForm();
+      return;
+    }
+
+    const subtabButton = event.target.closest("[data-subtab-group][data-subtab-target]");
+    if (subtabButton) {
+      event.preventDefault();
+      setSubtab(subtabButton.dataset.subtabGroup, subtabButton.dataset.subtabTarget);
+    }
+  });
   providerSelect.addEventListener("change", syncCustomFieldVisibility);
   specialtySelect.addEventListener("change", syncCustomFieldVisibility);
   reasonSelect.addEventListener("change", syncCustomFieldVisibility);
