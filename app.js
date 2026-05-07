@@ -447,6 +447,8 @@ const insuranceForm = document.querySelector("#insuranceForm");
 const insuranceSummary = document.querySelector("#insuranceSummary");
 const heroReminderCount = document.querySelector("#heroReminderCount");
 const heroProviderCount = document.querySelector("#heroProviderCount");
+const homeReminderCount = document.querySelector("#homeReminderCount");
+const homeProviderCount = document.querySelector("#homeProviderCount");
 const quickAddButton = document.querySelector("#quickAddButton");
 const dashboardAddAppointmentButton = document.querySelector("#dashboardAddAppointmentButton");
 const dashboardAddVisitLogButton = document.querySelector("#dashboardAddVisitLogButton");
@@ -538,6 +540,16 @@ let activeSubtabs = {
   "care-team": "providers",
 };
 
+function on(element, eventName, handler) {
+  if (element) element.addEventListener(eventName, handler);
+}
+
+function onAll(elements, eventName, handlerFactory) {
+  elements.forEach((element) => {
+    if (element) element.addEventListener(eventName, handlerFactory(element));
+  });
+}
+
 bindEvents();
 mergeInitialAppointmentLogs();
 syncForms();
@@ -548,101 +560,103 @@ renderVisitHistoryGlobalList();
 maybeSendBrowserNotifications();
 
 function bindEvents() {
-  appointmentForm.addEventListener("submit", handleAppointmentSubmit);
-  insuranceForm.addEventListener("submit", handleInsuranceSubmit);
-  profileForm.addEventListener("submit", handleProfileSubmit);
-  providerForm.addEventListener("submit", handleProviderSubmit);
-  visitLogForm.addEventListener("submit", handleVisitLogSubmit);
-  visitLogForm.addEventListener("click", handleVisitLogFormClick);
-  visitLogQuickTemplate.addEventListener("change", handleVisitLogTemplateChange);
-  visitLogQuickSaveButton.addEventListener("click", () => saveVisitLog({ addAnother: false }));
-  visitLogSaveAddAnotherButton.addEventListener("click", () => saveVisitLog({ addAnother: true }));
+  on(appointmentForm, "submit", handleAppointmentSubmit);
+  on(insuranceForm, "submit", handleInsuranceSubmit);
+  on(profileForm, "submit", handleProfileSubmit);
+  on(providerForm, "submit", handleProviderSubmit);
+  on(visitLogForm, "submit", handleVisitLogSubmit);
+  on(visitLogForm, "click", handleVisitLogFormClick);
+  on(visitLogQuickTemplate, "change", handleVisitLogTemplateChange);
+  on(visitLogQuickSaveButton, "click", () => saveVisitLog({ addAnother: false }));
+  on(visitLogSaveAddAnotherButton, "click", () => saveVisitLog({ addAnother: true }));
   if (visitLogSaveFollowUpButton) {
-    visitLogSaveFollowUpButton.addEventListener("click", () => saveVisitLog({ addAnother: false, scheduleFollowUp: true }));
+    on(visitLogSaveFollowUpButton, "click", () => saveVisitLog({ addAnother: false, scheduleFollowUp: true }));
   }
-  appointmentCancelButton.addEventListener("click", resetAppointmentForm);
-  visitLogCancelButton.addEventListener("click", resetVisitLogForm);
-  appointmentList.addEventListener("click", handleAppointmentListClick);
-  appointmentList.addEventListener("submit", handleInlineVisitLogSubmit);
-  dashboardAppointmentList.addEventListener("click", handleAppointmentListClick);
-  careTeamList.addEventListener("click", handleCareTeamClick);
-  recommendationList.addEventListener("click", handleRecommendationListClick);
-  visitHistoryGlobalList.addEventListener("click", handleVisitHistoryEditorClick);
-  visitHistoryGlobalList.addEventListener("submit", handleInlineVisitLogSubmit);
-  visitHistorySelectButton.addEventListener("click", enableVisitHistorySelectMode);
-  visitHistoryDeleteSelectedButton.addEventListener("click", deleteSelectedRecords);
-  visitHistoryCancelSelectButton.addEventListener("click", cancelVisitHistorySelectMode);
-  visitHistoryDeleteAllButton.addEventListener("click", deleteAllVisitLogs);
-  visitHistoryFilterButtons.forEach((button) =>
-    button.addEventListener("click", () => {
+  on(appointmentCancelButton, "click", resetAppointmentForm);
+  on(visitLogCancelButton, "click", resetVisitLogForm);
+  on(appointmentList, "click", handleAppointmentListClick);
+  on(appointmentList, "submit", handleInlineVisitLogSubmit);
+  on(dashboardAppointmentList, "click", handleAppointmentListClick);
+  on(careTeamList, "click", handleCareTeamClick);
+  on(recommendationList, "click", handleRecommendationListClick);
+  on(visitHistoryGlobalList, "click", handleVisitHistoryEditorClick);
+  on(visitHistoryGlobalList, "submit", handleInlineVisitLogSubmit);
+  on(visitHistorySelectButton, "click", enableVisitHistorySelectMode);
+  on(visitHistoryDeleteSelectedButton, "click", deleteSelectedRecords);
+  on(visitHistoryCancelSelectButton, "click", cancelVisitHistorySelectMode);
+  on(visitHistoryDeleteAllButton, "click", deleteAllVisitLogs);
+  visitHistoryFilterButtons.forEach((button) => {
+    if (button) button.addEventListener("click", () => {
       activeVisitHistoryFilter = button.dataset.visitHistoryFilter;
       selectedRecordIds.clear();
       render();
-    })
-  );
-  appointmentSearchInput.addEventListener("input", render);
-  appointmentStatusFilter.addEventListener("change", render);
-  appointmentSpecialtyFilter.addEventListener("change", render);
-  appointmentProviderFilter.addEventListener("change", render);
-  recordTypeFilter.addEventListener("change", render);
-  recordSortSelect.addEventListener("change", render);
+    });
+  });
+  on(appointmentSearchInput, "input", render);
+  on(appointmentStatusFilter, "change", render);
+  on(appointmentSpecialtyFilter, "change", render);
+  on(appointmentProviderFilter, "change", render);
+  on(recordTypeFilter, "change", render);
+  on(recordSortSelect, "change", render);
   if (showAddAppointmentFlow) {
-    showAddAppointmentFlow.addEventListener("click", () => openEntryFlow("appointment"));
+    on(showAddAppointmentFlow, "click", () => openEntryFlow("appointment"));
   }
   if (showLogPastVisitFlow) {
-    showLogPastVisitFlow.addEventListener("click", () => openEntryFlow("visit-log"));
+    on(showLogPastVisitFlow, "click", () => openEntryFlow("visit-log"));
   }
   if (exportBackupButton) {
-    exportBackupButton.addEventListener("click", exportBackup);
+    on(exportBackupButton, "click", exportBackup);
   }
   if (importBackupButton) {
-    importBackupButton.addEventListener("click", () => importBackupInput?.click());
+    on(importBackupButton, "click", () => importBackupInput?.click());
   }
   if (importBackupInput) {
-    importBackupInput.addEventListener("change", handleImportBackupFile);
+    on(importBackupInput, "change", handleImportBackupFile);
   }
   if (homeAddAppointmentAction) {
-    homeAddAppointmentAction.addEventListener("click", openAppointmentForm);
+    on(homeAddAppointmentAction, "click", openAppointmentForm);
   }
   if (homeLogVisitAction) {
-    homeLogVisitAction.addEventListener("click", () => openVisitLogTab("", true));
+    on(homeLogVisitAction, "click", () => openVisitLogTab("", true));
   }
   if (homeAddProviderAction) {
-    homeAddProviderAction.addEventListener("click", () => {
+    on(homeAddProviderAction, "click", () => {
       switchScreen("care-team");
       setSubtab("care-team", "providers");
     });
   }
-  recordViewButtons.forEach((button) => button.addEventListener("click", () => setRecordView(button.dataset.recordView)));
-  quickAddButton.addEventListener("click", () => {
+  recordViewButtons.forEach((button) => {
+    if (button) button.addEventListener("click", () => setRecordView(button.dataset.recordView));
+  });
+  on(quickAddButton, "click", () => {
     openAppointmentForm();
   });
-  dashboardAddAppointmentButton.addEventListener("click", openAppointmentForm);
-  stickyAddAppointmentButton.addEventListener("click", openAppointmentForm);
-  dashboardAddVisitLogButton.addEventListener("click", () => openVisitLogTab(editingAppointmentId || ""));
-  stickyAddVisitLogButton.addEventListener("click", () => openVisitLogTab(editingAppointmentId || ""));
-  dashboardViewCareTeamButton.addEventListener("click", () => {
+  on(dashboardAddAppointmentButton, "click", openAppointmentForm);
+  on(stickyAddAppointmentButton, "click", openAppointmentForm);
+  on(dashboardAddVisitLogButton, "click", () => openVisitLogTab(editingAppointmentId || ""));
+  on(stickyAddVisitLogButton, "click", () => openVisitLogTab(editingAppointmentId || ""));
+  on(dashboardViewCareTeamButton, "click", () => {
     switchScreen("care-team");
     setSubtab("care-team", "providers");
   });
-  dashboardInsuranceButton.addEventListener("click", () => switchScreen("insurance"));
-  stickySearchButton.addEventListener("click", () => {
+  on(dashboardInsuranceButton, "click", () => switchScreen("insurance"));
+  on(stickySearchButton, "click", () => {
     switchScreen("appointments");
     setSubtab("appointments", "records");
-    appointmentSearchInput.focus();
+    if (appointmentSearchInput) appointmentSearchInput.focus();
   });
-  notificationButton.addEventListener("click", requestNotificationPermission);
-  screenButtons.forEach((button) =>
-    button.addEventListener("click", () => switchScreen(button.dataset.screenTarget))
-  );
+  on(notificationButton, "click", requestNotificationPermission);
+  screenButtons.forEach((button) => {
+    if (button) button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
+  });
   actionButtons.forEach((button) => {
-    if (button.dataset.action === "add") {
-      button.addEventListener("click", openAppointmentForm);
+    if (button && button.dataset.action === "add") {
+      on(button, "click", openAppointmentForm);
     }
   });
-  subtabButtons.forEach((button) =>
-    button.addEventListener("click", () => setSubtab(button.dataset.subtabGroup, button.dataset.subtabTarget))
-  );
+  subtabButtons.forEach((button) => {
+    if (button) button.addEventListener("click", () => setSubtab(button.dataset.subtabGroup, button.dataset.subtabTarget));
+  });
 
   document.body.addEventListener("click", (event) => {
     const targetButton = event.target.closest("[data-screen-target]");
@@ -665,20 +679,22 @@ function bindEvents() {
       setSubtab(subtabButton.dataset.subtabGroup, subtabButton.dataset.subtabTarget);
     }
   });
-  providerSelect.addEventListener("change", syncCustomFieldVisibility);
-  specialtySelect.addEventListener("change", syncCustomFieldVisibility);
-  reasonSelect.addEventListener("change", syncCustomFieldVisibility);
-  providerSpecialtySelect.addEventListener("change", syncProviderCustomSpecialtyVisibility);
-  visitLogProviderSelect.addEventListener("change", syncVisitLogProviderSelection);
-  visitLogSpecialtySelect.addEventListener("change", syncVisitLogCustomSpecialtyVisibility);
+  on(providerSelect, "change", syncCustomFieldVisibility);
+  on(specialtySelect, "change", syncCustomFieldVisibility);
+  on(reasonSelect, "change", syncCustomFieldVisibility);
+  on(providerSpecialtySelect, "change", syncProviderCustomSpecialtyVisibility);
+  on(visitLogProviderSelect, "change", syncVisitLogProviderSelection);
+  on(visitLogSpecialtySelect, "change", syncVisitLogCustomSpecialtyVisibility);
   if (repeatVisitToggle) {
-    repeatVisitToggle.addEventListener("change", () => {
+    on(repeatVisitToggle, "change", () => {
       syncRepeatRuleVisibility();
       syncAppointmentPreview();
     });
   }
   ["appointmentDate", "nextRecommendedVisit", "intervalMonths", "reminderDaysBefore"].forEach((fieldName) => {
-    appointmentForm.elements[fieldName].addEventListener("input", syncAppointmentPreview);
+    if (appointmentForm?.elements[fieldName]) {
+      appointmentForm.elements[fieldName].addEventListener("input", syncAppointmentPreview);
+    }
   });
 }
 
@@ -1270,30 +1286,37 @@ function syncForms() {
   renderSelectOptions();
   resetAppointmentForm();
   resetVisitLogForm();
-  profileForm.elements.birthDate.value = state.profile?.birthDate || "";
-  profileForm.elements.sexAtBirth.value = state.profile?.sexAtBirth || "";
-  profileForm.elements.hasCervix.value = state.profile?.hasCervix || "";
-  profileForm.elements.postmenopausal.value = state.profile?.postmenopausal || "";
-  profileForm.elements.smokingStatus.value = state.profile?.smokingStatus || "";
-  profileForm.elements.packYears.value = state.profile?.packYears ?? "";
-  profileForm.elements.yearsSinceQuit.value = state.profile?.yearsSinceQuit ?? "";
-  profileForm.elements.hasOverweightOrObesity.value = state.profile?.hasOverweightOrObesity || "";
-  insuranceForm.elements.provider.value = state.insurance.provider || "";
-  insuranceForm.elements.planName.value = state.insurance.planName || "";
-  insuranceForm.elements.memberId.value = state.insurance.memberId || "";
-  insuranceForm.elements.groupNumber.value = state.insurance.groupNumber || "";
-  insuranceForm.elements.copay.value = state.insurance.copay || "";
-  insuranceForm.elements.phone.value = state.insurance.phone || "";
-  insuranceForm.elements.notes.value = state.insurance.notes || "";
+  if (profileForm) {
+    profileForm.elements.birthDate.value = state.profile?.birthDate || "";
+    profileForm.elements.sexAtBirth.value = state.profile?.sexAtBirth || "";
+    profileForm.elements.hasCervix.value = state.profile?.hasCervix || "";
+    profileForm.elements.postmenopausal.value = state.profile?.postmenopausal || "";
+    profileForm.elements.smokingStatus.value = state.profile?.smokingStatus || "";
+    profileForm.elements.packYears.value = state.profile?.packYears ?? "";
+    profileForm.elements.yearsSinceQuit.value = state.profile?.yearsSinceQuit ?? "";
+    profileForm.elements.hasOverweightOrObesity.value = state.profile?.hasOverweightOrObesity || "";
+  }
+  if (insuranceForm) {
+    insuranceForm.elements.provider.value = state.insurance.provider || "";
+    insuranceForm.elements.planName.value = state.insurance.planName || "";
+    insuranceForm.elements.memberId.value = state.insurance.memberId || "";
+    insuranceForm.elements.groupNumber.value = state.insurance.groupNumber || "";
+    insuranceForm.elements.copay.value = state.insurance.copay || "";
+    insuranceForm.elements.phone.value = state.insurance.phone || "";
+    insuranceForm.elements.notes.value = state.insurance.notes || "";
+  }
 }
 
 function render() {
   const summaries = getAppointmentSummaries();
   const reminderItems = summaries.filter((item) => item.reminderEnabled !== false && item.reminderStatus !== "ok");
   const recommendations = getProfileRecommendations();
+  const providerCount = new Set(state.appointments.map((item) => item.doctor)).size;
 
-  heroReminderCount.textContent = String(reminderItems.length);
-  heroProviderCount.textContent = String(new Set(state.appointments.map((item) => item.doctor)).size);
+  if (heroReminderCount) heroReminderCount.textContent = String(reminderItems.length);
+  if (heroProviderCount) heroProviderCount.textContent = String(providerCount);
+  if (homeReminderCount) homeReminderCount.textContent = String(reminderItems.length);
+  if (homeProviderCount) homeProviderCount.textContent = String(providerCount);
 
   renderDashboardStats(summaries, reminderItems);
   renderHomeSections(summaries);
@@ -1312,6 +1335,7 @@ function render() {
 }
 
 function renderDashboardStats(summaries, reminderItems) {
+  if (!dashboardStats) return;
   const overdueCount = reminderItems.filter((item) => item.reminderStatus === "overdue").length;
   const dueSoonCount = reminderItems.filter((item) => item.reminderStatus === "soon").length;
   const nextItem = summaries[0];
@@ -1326,6 +1350,7 @@ function renderDashboardStats(summaries, reminderItems) {
 }
 
 function renderReminderList(reminderItems) {
+  if (!reminderList) return;
   reminderList.innerHTML = reminderItems.length
     ? reminderItems
         .map(
@@ -1352,6 +1377,7 @@ function renderReminderList(reminderItems) {
 }
 
 function renderAppointmentLists(summaries) {
+  if (!appointmentList && !dashboardAppointmentList) return;
   const filteredSummaries = filterAppointmentSummaries(summaries);
   const markup = filteredSummaries.length
     ? filteredSummaries
@@ -1465,6 +1491,7 @@ function getRecordTitle(record) {
 }
 
 function renderAppointmentFilters() {
+  if (!appointmentSpecialtyFilter || !appointmentProviderFilter) return;
   const visitLogEntries = getAllVisitHistoryEntries();
   const specialtyOptions = mergeTextLists(
     [],
@@ -1564,6 +1591,7 @@ function renderHomeVisitLogCard(entry) {
 }
 
 function renderVisitTimelineList(summaries) {
+  if (!visitTimelineList) return;
   if (!visitTimelineList) {
     return;
   }
@@ -1620,6 +1648,7 @@ function renderTimelineEntry(record) {
 }
 
 function renderRecordView() {
+  if (!visitTimelineContainer || !appointmentList) return;
   if (!visitTimelineContainer || !appointmentList) {
     return;
   }
@@ -1861,6 +1890,7 @@ function buildCareTeamProviders() {
 }
 
 function renderInsuranceSummary() {
+  if (!insuranceSummary) return;
   const insurance = state.insurance;
   const hasInsurance = Object.values(insurance).some((value) => cleanText(value));
 
@@ -1880,6 +1910,7 @@ function renderInsuranceSummary() {
 }
 
 function renderCareTeam() {
+  if (!careTeamList) return;
   const providers = buildCareTeamProviders();
   careTeamList.innerHTML = providers.length
     ? providers
@@ -1934,6 +1965,7 @@ function renderCareTeam() {
 }
 
 function renderCareTeamActivity() {
+  if (!careTeamActivityList) return;
   const entries = getAllVisitHistoryEntries();
   careTeamActivityList.innerHTML = entries.length
     ? entries
@@ -1962,6 +1994,7 @@ function renderCareTeamActivity() {
 }
 
 function renderRecommendations(recommendations) {
+  if (!recommendationList) return;
   const age = getProfileAge();
   recommendationList.innerHTML = recommendations.length
     ? recommendations
@@ -1997,6 +2030,7 @@ function renderRecommendations(recommendations) {
 }
 
 function renderVisitHistoryGlobalList() {
+  if (!visitHistoryGlobalList) return;
   const allEntries = getAllVisitHistoryEntries();
   const entries = filterVisitHistoryEntries(allEntries);
   selectedRecordIds = new Set([...selectedRecordIds].filter((id) => entries.some((entry) => entry.id === id)));
@@ -2670,6 +2704,7 @@ function buildAppointmentSummary(appointment) {
 }
 
 function syncAppointmentPreview() {
+  if (!appointmentForm || !suggestionPreview || !reminderPreview) return;
   const latestVisitDate = getLatestVisitDate(editingVisitHistory);
   const appointmentDate = cleanText(appointmentForm.elements.appointmentDate.value);
   const nextRecommendedVisit = cleanText(appointmentForm.elements.nextRecommendedVisit.value);
@@ -2730,6 +2765,7 @@ function maybeSendBrowserNotifications() {
 }
 
 function updateNotificationButton() {
+  if (!notificationButton) return;
   if (!("Notification" in window)) {
     notificationButton.textContent = "Notifications Not Supported";
     notificationButton.disabled = true;
@@ -2956,6 +2992,7 @@ function addDeletedSeedKey(appointment) {
 }
 
 function renderSelectOptions(resetSelections = false) {
+  if (!providerSelect && !visitLogProviderSelect) return;
   const providerOptions = mergeTextLists(DEFAULT_PROVIDER_OPTIONS, state.appointments.map((item) => item.doctor));
   const specialtyOptions = mergeTextLists(DEFAULT_SPECIALTY_OPTIONS, state.appointments.map((item) => item.specialty));
   const reasonOptions = mergeTextLists(DEFAULT_REASON_OPTIONS, state.appointments.map((item) => item.reasonForVisit));
