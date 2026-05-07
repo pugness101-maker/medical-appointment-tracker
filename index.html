@@ -105,66 +105,98 @@
       </header>
 
       <nav class="tabbar" aria-label="Primary">
-        <button class="tabbar-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
-        <button class="tabbar-button" type="button" data-screen-target="appointments">Appointments</button>
+        <button class="tabbar-button is-active" type="button" data-screen-target="dashboard">Home</button>
+        <button class="tabbar-button" type="button" data-screen-target="appointments">Records</button>
         <button class="tabbar-button" type="button" data-screen-target="care-team">Care Team</button>
         <button class="tabbar-button" type="button" data-screen-target="insurance">Insurance</button>
       </nav>
 
       <main class="screen-stack">
         <section class="app-screen is-active" data-screen="dashboard">
-          <nav class="subtabbar" aria-label="Dashboard Sections">
-            <button class="subtab-button is-active" type="button" data-subtab-group="dashboard" data-subtab-target="overview">Overview</button>
-            <button class="subtab-button" type="button" data-subtab-group="dashboard" data-subtab-target="reminders">Reminders</button>
-            <button class="subtab-button" type="button" data-subtab-group="dashboard" data-subtab-target="schedule">Schedule</button>
-          </nav>
-
-          <section class="panel subview-panel is-active" data-subview-group="dashboard" data-subview="overview">
+          <section class="panel home-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Home</p>
+                <h2>Track appointments, visit logs, and reminders.</h2>
+                <p class="meta">A cleaner overview with today’s reminders, upcoming visits, overdue alerts, and recent visit notes.</p>
+              </div>
+              <div class="home-actions">
+                <button id="exportBackupButton" class="button-secondary" type="button">Export Backup</button>
+                <button id="importBackupButton" class="button-secondary" type="button">Import Backup</button>
+              </div>
+            </div>
+            <div class="home-action-grid">
+              <button id="homeAddAppointmentAction" class="action-card button-primary" type="button">Add Appointment</button>
+              <button id="homeLogVisitAction" class="action-card button-secondary" type="button">Log Past Visit</button>
+              <button id="homeAddProviderAction" class="action-card button-secondary" type="button">Add Provider</button>
+            </div>
+            <div class="home-status-grid">
+              <article class="stat-card">
+                <span>Upcoming reminders</span>
+                <strong id="heroReminderCount">0</strong>
+              </article>
+              <article class="stat-card">
+                <span>Tracked providers</span>
+                <strong id="heroProviderCount">0</strong>
+              </article>
+              <article class="stat-card">
+                <span>Overdue alerts</span>
+                <strong id="homeOverdueCount">0</strong>
+              </article>
+              <article class="stat-card">
+                <span>Scheduled visits</span>
+                <strong id="homeScheduledCount">0</strong>
+              </article>
+            </div>
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Suggested Appointments</p>
                 <h2>Recommendations based on your profile</h2>
-                <p class="meta">
-                  These suggestions are derived from official screening guidance and should be discussed with a clinician.
-                </p>
               </div>
             </div>
             <div id="recommendationList" class="card-list empty-state"></div>
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">At A Glance</p>
-                <h2>Your next visits and reminders</h2>
-              </div>
-              <button id="quickAddButton" class="button-primary" type="button">Add Appointment</button>
-            </div>
-            <div class="quick-action-row">
-              <button id="dashboardAddAppointmentButton" class="button-secondary" type="button">Add Appointment</button>
-              <button id="dashboardAddVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>
-              <button id="dashboardViewCareTeamButton" class="button-secondary" type="button">View Care Team</button>
-              <button id="dashboardInsuranceButton" class="button-secondary" type="button">Insurance Info</button>
-            </div>
-            <div id="dashboardStats" class="stats-grid"></div>
           </section>
 
-          <section class="panel subview-panel" data-subview-group="dashboard" data-subview="reminders">
+          <section class="panel home-section">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">Reminder Center</p>
-                <h2>Due now or coming up soon</h2>
+                <p class="eyebrow">Today</p>
+                <h2>Appointments and reminders scheduled for today</h2>
               </div>
             </div>
-            <div id="reminderList" class="card-list empty-state"></div>
+            <div id="homeTodayList" class="card-list empty-state"></div>
           </section>
 
-          <section class="panel subview-panel" data-subview-group="dashboard" data-subview="schedule">
+          <section class="panel home-section">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">Schedule</p>
-                <h2>All tracked appointments</h2>
+                <p class="eyebrow">Upcoming</p>
+                <h2>Items due soon</h2>
               </div>
             </div>
-            <div id="dashboardAppointmentList" class="card-list empty-state"></div>
+            <div id="homeUpcomingList" class="card-list empty-state"></div>
           </section>
+
+          <section class="panel home-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Overdue</p>
+                <h2>Items that need attention</h2>
+              </div>
+            </div>
+            <div id="homeOverdueList" class="card-list empty-state"></div>
+          </section>
+
+          <section class="panel home-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Recent Visit Logs</p>
+                <h2>Recent history and follow-up notes</h2>
+              </div>
+            </div>
+            <div id="homeRecentLogsList" class="card-list empty-state"></div>
+          </section>
+          <input id="importBackupInput" class="is-hidden" type="file" accept="application/json" />
         </section>
 
         <section class="app-screen" data-screen="appointments">
@@ -455,7 +487,7 @@
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Records</p>
-                <h2>Appointments and visit history</h2>
+                <h2>Appointments, visit logs, and timeline view</h2>
               </div>
             </div>
             <div class="form-grid appointment-filters">
@@ -510,6 +542,20 @@
                 </select>
               </label>
             </div>
+            <div class="inline-row record-view-toggle">
+              <button class="button-secondary is-active" type="button" data-record-view="list">List view</button>
+              <button class="button-secondary" type="button" data-record-view="timeline">Visit timeline</button>
+            </div>
+            <div id="visitTimelineContainer" class="timeline-container is-hidden">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Visit Timeline</p>
+                  <h3>Chronological view of appointments and logs</h3>
+                </div>
+              </div>
+              <div id="visitTimelineList" class="timeline-list empty-state"></div>
+            </div>
+            <div id="appointmentList" class="card-list empty-state"></div>
             <div class="visit-history-toolbar">
               <div class="inline-row">
                 <button id="visitHistorySelectButton" class="button-secondary" type="button">Select</button>
@@ -518,7 +564,6 @@
                 <button id="visitHistoryDeleteAllButton" class="button-danger" type="button">Delete All Visit Logs</button>
               </div>
             </div>
-            <div id="appointmentList" class="card-list empty-state"></div>
           </section>
         </section>
 
@@ -645,6 +690,13 @@
           </section>
         </section>
       </main>
+      <nav class="bottom-nav" aria-label="Primary mobile navigation">
+        <button class="bottom-nav-button is-active" type="button" data-screen-target="dashboard">Home</button>
+        <button class="bottom-nav-button" type="button" data-screen-target="appointments">Records</button>
+        <button class="bottom-nav-button" type="button" data-action="add">Add</button>
+        <button class="bottom-nav-button" type="button" data-screen-target="care-team">Care Team</button>
+        <button class="bottom-nav-button" type="button" data-screen-target="insurance">Insurance</button>
+      </nav>
       <div class="sticky-action-bar">
         <button id="stickyAddAppointmentButton" class="button-primary" type="button">Add Appointment</button>
         <button id="stickyAddVisitLogButton" class="button-secondary" type="button">Add Visit Log</button>

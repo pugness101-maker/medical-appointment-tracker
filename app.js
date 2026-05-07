@@ -503,11 +503,28 @@ const visitHistoryCancelSelectButton = document.querySelector("#visitHistoryCanc
 const visitHistoryDeleteAllButton = document.querySelector("#visitHistoryDeleteAllButton");
 const visitHistoryFilterButtons = [...document.querySelectorAll("[data-visit-history-filter]")];
 const screenButtons = [...document.querySelectorAll("[data-screen-target]")];
+const actionButtons = [...document.querySelectorAll("[data-action]")];
 const screens = [...document.querySelectorAll("[data-screen]")];
 const subtabButtons = [...document.querySelectorAll("[data-subtab-group][data-subtab-target]")];
 const subviews = [...document.querySelectorAll("[data-subview-group][data-subview]")];
+const exportBackupButton = document.querySelector("#exportBackupButton");
+const importBackupButton = document.querySelector("#importBackupButton");
+const importBackupInput = document.querySelector("#importBackupInput");
+const homeAddAppointmentAction = document.querySelector("#homeAddAppointmentAction");
+const homeLogVisitAction = document.querySelector("#homeLogVisitAction");
+const homeAddProviderAction = document.querySelector("#homeAddProviderAction");
+const homeTodayList = document.querySelector("#homeTodayList");
+const homeUpcomingList = document.querySelector("#homeUpcomingList");
+const homeOverdueList = document.querySelector("#homeOverdueList");
+const homeRecentLogsList = document.querySelector("#homeRecentLogsList");
+const homeOverdueCount = document.querySelector("#homeOverdueCount");
+const homeScheduledCount = document.querySelector("#homeScheduledCount");
+const recordViewButtons = [...document.querySelectorAll("[data-record-view]")];
+const visitTimelineContainer = document.querySelector("#visitTimelineContainer");
+const visitTimelineList = document.querySelector("#visitTimelineList");
 
 let editingAppointmentId = "";
+let activeRecordView = "list";
 let editingVisitLogId = "";
 let editingVisitHistory = [];
 let inlineEditingVisitLogId = "";
@@ -575,6 +592,28 @@ function bindEvents() {
   if (showLogPastVisitFlow) {
     showLogPastVisitFlow.addEventListener("click", () => openEntryFlow("visit-log"));
   }
+  if (exportBackupButton) {
+    exportBackupButton.addEventListener("click", exportBackup);
+  }
+  if (importBackupButton) {
+    importBackupButton.addEventListener("click", () => importBackupInput?.click());
+  }
+  if (importBackupInput) {
+    importBackupInput.addEventListener("change", handleImportBackupFile);
+  }
+  if (homeAddAppointmentAction) {
+    homeAddAppointmentAction.addEventListener("click", openAppointmentForm);
+  }
+  if (homeLogVisitAction) {
+    homeLogVisitAction.addEventListener("click", () => openVisitLogTab("", true));
+  }
+  if (homeAddProviderAction) {
+    homeAddProviderAction.addEventListener("click", () => {
+      switchScreen("care-team");
+      setSubtab("care-team", "providers");
+    });
+  }
+  recordViewButtons.forEach((button) => button.addEventListener("click", () => setRecordView(button.dataset.recordView)));
   quickAddButton.addEventListener("click", () => {
     openAppointmentForm();
   });
@@ -596,6 +635,11 @@ function bindEvents() {
   screenButtons.forEach((button) =>
     button.addEventListener("click", () => switchScreen(button.dataset.screenTarget))
   );
+  actionButtons.forEach((button) => {
+    if (button.dataset.action === "add") {
+      button.addEventListener("click", openAppointmentForm);
+    }
+  });
   subtabButtons.forEach((button) =>
     button.addEventListener("click", () => setSubtab(button.dataset.subtabGroup, button.dataset.subtabTarget))
   );
@@ -1230,6 +1274,7 @@ function render() {
   heroProviderCount.textContent = String(new Set(state.appointments.map((item) => item.doctor)).size);
 
   renderDashboardStats(summaries, reminderItems);
+  renderHomeSections(summaries);
   renderReminderList(reminderItems);
   renderAppointmentLists(summaries);
   renderVisitHistoryGlobalList();
@@ -1239,6 +1284,8 @@ function render() {
   renderCareTeamActivity();
   renderAppointmentFilters();
   renderSelectOptions(false);
+  renderVisitTimelineList(summaries);
+  renderRecordView();
   updateNotificationButton();
 }
 
@@ -1421,6 +1468,148 @@ function renderAppointmentFilters() {
   appointmentProviderFilter.value = [...appointmentProviderFilter.options].some((option) => option.value === currentProvider)
     ? currentProvider
     : "all";
+}
+
+function renderHomeSections(summaries) {
+  if (!homeTodayList || !homeUpcomingList || !homeOverdueList || !homeRecentLogsList) {
+    return;
+  }
+
+  const today = todayString();
+  const todayItems = summaries.filter(
+    (item) =>
+      item.appointmentDate === today || item.reminderStartDate === today || item.nextVisitDate === today
+  );
+  const overdueItems = summaries.filter((item) => item.reminderStatus === "overdue");
+  const upcomingItems = summaries.filter(
+    (item) => item.reminderStatus === "soon" && !todayItems.includes(item)
+  );
+  const recentLogs = getAllVisitHistoryEntries()
+    .slice()
+    .sort((a, b) => compareOptionalDates(b.date, a.date))
+    .slice(0, 4);
+
+  homeTodayList.innerHTML = todayItems.length
+    ? todayItems.map(renderHomeSummaryCard).join("")
+    : `<p class="muted">No visits or reminders scheduled for today.</p>`;
+  homeUpcomingList.innerHTML = upcomingItems.length
+    ? upcomingItems.map(renderHomeSummaryCard).join("")
+    : `<p class="muted">No upcoming reminders found.</p>`;
+  homeOverdueList.innerHTML = overdueItems.length
+    ? overdueItems.map(renderHomeSummaryCard).join("")
+    : `<p class="muted">No overdue items right now.</p>`;
+  homeRecentLogsList.innerHTML = recentLogs.length
+    ? recentLogs.map(renderHomeVisitLogCard).join("")
+    : `<p class="muted">No recent visit logs yet.</p>`;
+
+  if (homeOverdueCount) {
+    homeOverdueCount.textContent = String(overdueItems.length);
+  }
+  if (homeScheduledCount) {
+    homeScheduledCount.textContent = String(summaries.filter((item) => item.appointmentStatus === "Scheduled").length);
+  }
+}
+
+function renderHomeSummaryCard(item) {
+  return `
+    <article class="summary-card">
+      <div class="card-head">
+        <div>
+          <strong>${escapeHtml(getRecordTitle(item))}</strong>
+          <span class="meta">${escapeHtml(item.reasonForVisit || item.appointmentStatus || "No reason saved")}</span>
+          <span class="meta">${formatDate(item.nextVisitDate)} • ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
+        </div>
+        ${statusPill(item)}
+      </div>
+    </article>
+  `;
+}
+
+function renderHomeVisitLogCard(entry) {
+  return `
+    <article class="summary-card">
+      <div class="card-head">
+        <div>
+          <strong>${escapeHtml(getRecordTitle(entry))}</strong>
+          <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
+          <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
+        </div>
+        ${statusPill(entry)}
+      </div>
+      <div class="summary-row"><strong>Summary</strong><span>${escapeHtml(entry.summary || "Not saved")}</span></div>
+    </article>
+  `;
+}
+
+function renderVisitTimelineList(summaries) {
+  if (!visitTimelineList) {
+    return;
+  }
+
+  const records = getFilteredSortedRecords(summaries);
+  const timeline = records
+    .filter((record) => getRecordDate(record))
+    .sort((a, b) => compareOptionalDates(getRecordDate(a), getRecordDate(b)));
+
+  if (!timeline.length) {
+    visitTimelineList.innerHTML = `<p class="muted">No timeline entries match the current filters.</p>`;
+    return;
+  }
+
+  const grouped = timeline.reduce((acc, record) => {
+    const dateKey = formatDate(getRecordDate(record));
+    acc[dateKey] = acc[dateKey] || [];
+    acc[dateKey].push(record);
+    return acc;
+  }, {});
+
+  visitTimelineList.innerHTML = Object.keys(grouped)
+    .sort((a, b) => compareOptionalDates(a, b))
+    .map(
+      (dateKey) => `
+        <div class="timeline-day">
+          <h4>${escapeHtml(dateKey)}</h4>
+          ${grouped[dateKey]
+            .map((record) => renderTimelineEntry(record))
+            .join("")}
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderTimelineEntry(record) {
+  const item = record.item;
+  const entryLabel = record.type === "appointment" ? "Appointment" : "Visit Log";
+  const dateLabel = record.type === "appointment" ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime) : formatDate(item.date);
+
+  return `
+    <article class="timeline-card">
+      <div class="timeline-card-meta">
+        <strong>${escapeHtml(getRecordTitle(item))}</strong>
+        <span class="meta">${escapeHtml(dateLabel)} • ${escapeHtml(record.type === "appointment" ? item.appointmentStatus || "Planned" : entryLabel)}</span>
+      </div>
+      <div class="inline-row wrap">
+        ${statusPill(item)}
+        <span class="pill ${record.type === "appointment" ? "scheduled" : "ok"}">${entryLabel}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderRecordView() {
+  if (!visitTimelineContainer || !appointmentList) {
+    return;
+  }
+  const isTimeline = activeRecordView === "timeline";
+  visitTimelineContainer.classList.toggle("is-hidden", !isTimeline);
+  appointmentList.classList.toggle("is-hidden", isTimeline);
+}
+
+function setRecordView(view) {
+  activeRecordView = view;
+  recordViewButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.recordView === view));
+  renderRecordView();
 }
 
 function filterAppointmentSummaries(summaries) {
@@ -2552,9 +2741,34 @@ function metricCard(label, value) {
   `;
 }
 
-function statusPill(status) {
-  const label = status === "overdue" ? "Overdue" : status === "soon" ? "Due soon" : "On track";
-  return `<span class="pill ${status}">${label}</span>`;
+function statusPill(source) {
+  let label = "On track";
+  let className = "on-track";
+  let appointmentStatus = "";
+  let reminderStatus = "";
+
+  if (source && typeof source === "object") {
+    appointmentStatus = source.appointmentStatus || source.status || "";
+    reminderStatus = source.reminderStatus || "";
+  } else if (typeof source === "string") {
+    reminderStatus = source;
+  }
+
+  if (appointmentStatus === "Completed") {
+    label = "Completed";
+    className = "completed";
+  } else if (appointmentStatus === "Scheduled") {
+    label = "Scheduled";
+    className = "scheduled";
+  } else if (reminderStatus === "overdue") {
+    label = "Overdue";
+    className = "overdue";
+  } else if (reminderStatus === "soon") {
+    label = "Due soon";
+    className = "soon";
+  }
+
+  return `<span class="pill ${className}">${label}</span>`;
 }
 
 function loadState() {
@@ -2628,6 +2842,52 @@ function persist() {
   } catch (error) {
     console.warn("Could not save tracker data to localStorage.", error);
   }
+}
+
+function exportBackup() {
+  try {
+    const payload = JSON.stringify({ version: STORAGE_VERSION, savedAt: new Date().toISOString(), data: normalizeState(state) }, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "medical-appointment-tracker-backup.json";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.warn("Could not export backup.", error);
+    alert("Unable to export backup. Please try again.");
+  }
+}
+
+function handleImportBackupFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      const importedData = imported?.version && imported?.data ? imported.data : imported;
+      const normalized = normalizeState(importedData);
+      Object.assign(state, normalized);
+      persist();
+      render();
+      alert("Backup imported successfully.");
+    } catch (error) {
+      console.warn("Could not import backup.", error);
+      alert("Unable to import backup. Please select a valid JSON file.");
+    } finally {
+      if (importBackupInput) {
+        importBackupInput.value = "";
+      }
+    }
+  };
+  reader.readAsText(file);
 }
 
 function mergeInitialAppointmentLogs() {
