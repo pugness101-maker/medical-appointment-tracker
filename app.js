@@ -770,6 +770,9 @@ function setSubtab(group, target) {
   if (group === "appointments" && target === "records") {
     renderVisitHistoryGlobalList();
   }
+  if (group === "care-team" && target === "providers") {
+    renderCareTeam();
+  }
 }
 
 function handleAppointmentSubmit(event) {
@@ -887,55 +890,37 @@ function handleProviderSubmit(event) {
   }
 
   const providerKey = normalizeLookupKey(`${doctor}|${specialty}|${clinic}`);
-  const existingIndex = state.appointments.findIndex((appointment) => {
-    const appointmentClinic = cleanText(appointment.clinic) || extractClinicName(appointment.place);
-    return normalizeLookupKey(`${appointment.doctor}|${appointment.specialty}|${appointmentClinic}`) === providerKey;
+  const existingIndex = state.providers.findIndex((provider) => {
+    const providerClinic = cleanText(provider.clinic);
+    return normalizeLookupKey(`${provider.doctor}|${provider.specialty}|${providerClinic}`) === providerKey;
   });
-  const providerDetails = {
-    id: existingIndex >= 0 ? state.appointments[existingIndex].id : crypto.randomUUID(),
-    title: getRecordTitle({ specialty, provider: doctor }),
+
+  const providerRecord = {
+    id: existingIndex >= 0 ? state.providers[existingIndex].id : crypto.randomUUID(),
+    key: providerKey,
     doctor,
     specialty,
     clinic,
-    place: cleanText(formData.get("place")),
-    contactPhone: cleanText(formData.get("contactPhone")),
+    address: cleanText(formData.get("place")),
+    phone: cleanText(formData.get("contactPhone")),
     insuranceAccepted: cleanText(formData.get("insuranceAccepted")),
     portalLink: cleanText(formData.get("portalLink")),
+    createdAt: existingIndex >= 0 ? state.providers[existingIndex].createdAt || new Date().toISOString() : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
-  const providerRecord = {
-    ...providerDetails,
-    appointmentDate: "",
-    appointmentTime: "",
-    appointmentStatus: "Planned",
-    nextRecommendedVisit: "",
-    intervalMonths: 12,
-    reminderDaysBefore: 14,
-    reminderEnabled: false,
-    reasonForVisit: "Provider profile",
-    questionsToAsk: "",
-    medications: "",
-    testResults: "",
-    resultFiles: [],
-    visitHistory: existingIndex >= 0 ? normalizeVisitHistory(state.appointments[existingIndex].visitHistory || []) : [],
-    notes: "Care team provider profile.",
-    createdAt: existingIndex >= 0 ? state.appointments[existingIndex].createdAt || new Date().toISOString() : new Date().toISOString(),
   };
 
   if (existingIndex >= 0) {
-    state.appointments[existingIndex] = {
-      ...state.appointments[existingIndex],
-      ...providerDetails,
-      visitHistory: normalizeVisitHistory(state.appointments[existingIndex].visitHistory || []),
-    };
+    state.providers[existingIndex] = providerRecord;
   } else {
-    state.appointments.unshift(providerRecord);
+    state.providers.push(providerRecord);
   }
+
+  console.log('Saved providers:', state.providers);
 
   providerForm.reset();
   syncProviderCustomSpecialtyVisibility();
   persist();
-  render();
+  renderCareTeam();
 }
 
 function syncProviderCustomSpecialtyVisibility() {
@@ -1009,59 +994,39 @@ function handleAppointmentListClick(event) {
 }
 
 function handleCareTeamClick(event) {
-  const appointmentId = event.target.closest("[data-add-provider-visit-log]")?.dataset.addProviderVisitLog;
-  const providerActivityId = event.target.closest("[data-open-provider-activity]")?.dataset.openProviderActivity;
   const providerEditKey = event.target.closest("[data-edit-provider]")?.dataset.editProvider;
   const providerDeleteKey = event.target.closest("[data-delete-provider]")?.dataset.deleteProvider;
 
-  if (appointmentId) {
-    openVisitLogTab(appointmentId);
-    return;
-  }
-
-  if (providerActivityId) {
-    switchScreen("care-team");
-    setSubtab("care-team", "activity");
-    return;
-  }
-
   if (providerEditKey) {
-    const provider = buildCareTeamProviders().find((item) => item.key === providerEditKey);
+    const provider = (state.providers || []).find((item) => item.key === providerEditKey);
     if (!provider) {
       return;
     }
-    loadAppointmentIntoForm(provider.primaryAppointmentId);
-    switchScreen("appointments");
-    setSubtab("appointments", "form");
-    setAddEditMode("appointment");
+    providerForm.elements.doctor.value = provider.doctor || "";
+    providerForm.elements.clinic.value = provider.clinic || "";
+    providerForm.elements.place.value = provider.address || "";
+    providerForm.elements.contactPhone.value = provider.phone || "";
+    providerForm.elements.insuranceAccepted.value = provider.insuranceAccepted || "";
+    providerForm.elements.portalLink.value = provider.portalLink || "";
+    setSelectWithCustomValue(providerSpecialtySelect, providerForm.elements.customSpecialty, provider.specialty || "");
+    syncProviderCustomSpecialtyVisibility();
+    switchScreen("care-team");
+    setSubtab("care-team", "providers");
     return;
   }
 
   if (providerDeleteKey) {
-    const provider = buildCareTeamProviders().find((item) => item.key === providerDeleteKey);
+    const provider = (state.providers || []).find((item) => item.key === providerDeleteKey);
     if (!provider) {
       return;
     }
-    const confirmed = window.confirm(
-      `Delete ${provider.doctor} from your care team? This will remove ${provider.appointments.length} tracked appointment${provider.appointments.length === 1 ? "" : "s"} and their visit logs.`
-    );
+    const confirmed = window.confirm(`Delete ${provider.doctor} from your care team?`);
     if (!confirmed) {
       return;
     }
-    const appointmentIds = new Set(provider.appointments.map((item) => item.id));
-    provider.appointments.forEach((appointment) => addDeletedSeedKey(appointment));
-    state.appointments = state.appointments.filter((item) => !appointmentIds.has(item.id));
-    if (appointmentIds.has(editingAppointmentId)) {
-      resetAppointmentForm();
-    }
-    const editingLogBelongsToProvider = provider.appointments.some((appointment) =>
-      normalizeVisitHistory(appointment.visitHistory || []).some((log) => log.id === editingVisitLogId)
-    );
-    if (editingLogBelongsToProvider) {
-      resetVisitLogForm();
-    }
+    state.providers = (state.providers || []).filter((item) => item.key !== providerDeleteKey);
     persist();
-    render();
+    renderCareTeam();
   }
 }
 
@@ -1852,43 +1817,6 @@ function renderVisitLogRecordCard(entry) {
   `;
 }
 
-function buildCareTeamProviders() {
-  const providerMap = new Map();
-
-  getAppointmentSummaries().forEach((appointment) => {
-    const clinic = appointment.clinic || extractClinicName(appointment.place);
-    const key = normalizeLookupKey(`${appointment.doctor}|${appointment.specialty}|${clinic}`);
-    if (!key) {
-      return;
-    }
-
-    const existing = providerMap.get(key) || {
-      key,
-      doctor: appointment.doctor,
-      specialty: appointment.specialty,
-      clinic,
-      address: appointment.clinic ? appointment.place : extractAddress(appointment.place),
-      phone: appointment.contactPhone,
-      portalLink: appointment.portalLink,
-      insuranceAccepted: appointment.insuranceAccepted,
-      lastVisitDate: appointment.lastVisitDate,
-      visitCount: 0,
-      appointments: [],
-      primaryAppointmentId: appointment.id,
-    };
-
-    existing.phone = existing.phone || appointment.contactPhone;
-    existing.portalLink = existing.portalLink || appointment.portalLink;
-    existing.insuranceAccepted = existing.insuranceAccepted || appointment.insuranceAccepted;
-    existing.lastVisitDate = compareOptionalDates(appointment.lastVisitDate, existing.lastVisitDate) < 0 ? existing.lastVisitDate : appointment.lastVisitDate || existing.lastVisitDate;
-    existing.visitCount += 1;
-    existing.appointments.push(appointment);
-    providerMap.set(key, existing);
-  });
-
-  return Array.from(providerMap.values()).sort((a, b) => a.doctor.localeCompare(b.doctor));
-}
-
 function renderInsuranceSummary() {
   if (!insuranceSummary) return;
   const insurance = state.insurance;
@@ -1911,7 +1839,8 @@ function renderInsuranceSummary() {
 
 function renderCareTeam() {
   if (!careTeamList) return;
-  const providers = buildCareTeamProviders();
+  console.log('Rendering providers from state.providers:', state.providers);
+  const providers = state.providers || [];
   careTeamList.innerHTML = providers.length
     ? providers
         .map(
@@ -1923,7 +1852,6 @@ function renderCareTeam() {
                   <span class="meta">${escapeHtml(provider.specialty || "General")}</span>
                   <span class="meta">${escapeHtml(provider.clinic || provider.address || "No clinic details saved")}</span>
                 </div>
-                <span class="pill ok">${provider.visitCount} visit${provider.visitCount === 1 ? "" : "s"}</span>
               </summary>
               <div class="appointment-dropdown-body">
                 <div class="detail-grid">
@@ -1932,36 +1860,17 @@ function renderCareTeam() {
                   <span><strong>Address</strong>${escapeHtml(provider.address || "Not saved")}</span>
                   <span><strong>Insurance accepted</strong>${escapeHtml(provider.insuranceAccepted || "Not saved")}</span>
                   <span><strong>Portal link</strong>${provider.portalLink ? `<a class="source-link" href="${escapeHtml(provider.portalLink)}" target="_blank" rel="noreferrer">Open portal</a>` : "Not saved"}</span>
-                  <span><strong>Last tracked visit</strong>${formatDate(provider.lastVisitDate)}</span>
                 </div>
                 <div class="inline-row">
-                  <button class="button-secondary" type="button" data-add-provider-visit-log="${provider.primaryAppointmentId}">Add Visit Log</button>
-                  <button class="button-secondary" type="button" data-open-provider-activity="${provider.primaryAppointmentId}">View activity</button>
                   <button class="button-secondary" type="button" data-edit-provider="${escapeHtml(provider.key)}">Edit Provider</button>
                   <button class="button-danger" type="button" data-delete-provider="${escapeHtml(provider.key)}">Delete Provider</button>
-                </div>
-                <div class="visit-history-list">
-                  <strong>Tracked appointments</strong>
-                  ${
-                    provider.appointments
-                      .map(
-                        (item) => `
-                          <article class="summary-card">
-                            <div class="summary-row"><strong>${escapeHtml(getRecordTitle(item))}</strong><span>${escapeHtml(item.appointmentStatus || "Planned")}</span></div>
-                            <div class="summary-row"><strong>Next visit</strong><span>${formatDate(item.nextVisitDate)}</span></div>
-                            <div class="summary-row"><strong>Reason</strong><span>${escapeHtml(item.reasonForVisit || "Not saved")}</span></div>
-                          </article>
-                        `
-                      )
-                      .join("")
-                  }
                 </div>
               </div>
             </details>
           `
         )
         .join("")
-    : `<p class="muted">No care team entries yet. Add appointments with provider details to build your care team.</p>`;
+    : `<p class="muted">No care team entries yet. Add a provider using the form above.</p>`;
 }
 
 function renderCareTeamActivity() {
@@ -2862,6 +2771,7 @@ function loadState() {
 function getEmptyState() {
   return {
     appointments: [],
+    providers: [],
     insurance: {},
     profile: {},
     deletedSeedKeys: [],
@@ -2874,12 +2784,36 @@ function normalizeState(saved) {
   return {
     ...emptyState,
     appointments: normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []),
+    providers: Array.isArray(saved?.providers)
+      ? saved.providers.map(normalizeProvider).filter(Boolean)
+      : [],
     insurance: saved?.insurance && typeof saved.insurance === "object" ? saved.insurance : {},
     profile: saved?.profile && typeof saved.profile === "object" ? saved.profile : {},
     deletedSeedKeys: Array.isArray(saved?.deletedSeedKeys)
       ? saved.deletedSeedKeys.map((item) => cleanText(item)).filter(Boolean)
       : [],
     lastNotificationDate: cleanText(saved?.lastNotificationDate),
+  };
+}
+
+function normalizeProvider(provider) {
+  const doctor = cleanText(provider.doctor);
+  const specialty = cleanText(provider.specialty) || "General";
+  const clinic = cleanText(provider.clinic);
+  if (!doctor && !clinic) return null;
+
+  return {
+    id: cleanText(provider.id) || crypto.randomUUID(),
+    key: cleanText(provider.key) || normalizeLookupKey(`${doctor}|${specialty}|${clinic}`),
+    doctor,
+    specialty,
+    clinic,
+    address: cleanText(provider.address),
+    phone: cleanText(provider.phone),
+    insuranceAccepted: cleanText(provider.insuranceAccepted),
+    portalLink: cleanText(provider.portalLink),
+    createdAt: cleanText(provider.createdAt) || new Date().toISOString(),
+    updatedAt: cleanText(provider.updatedAt) || "",
   };
 }
 
