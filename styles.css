@@ -33,7 +33,7 @@ body {
 .app-shell {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 20px 0 120px;
+  padding: 20px 0 32px;
 }
 
 .hero,
@@ -261,7 +261,72 @@ textarea {
 }
 
 .home-action-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.care-plan-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.care-plan-filter-row .button-secondary {
+  padding: 8px 14px;
+  font-size: 0.88rem;
+}
+
+.care-plan-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.care-plan-category {
+  display: grid;
+  gap: 12px;
+}
+
+.care-plan-category h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--primary-deep);
+}
+
+.care-plan-card {
+  border-left: 4px solid var(--primary);
+}
+
+.care-plan-card.status-overdue {
+  border-left-color: var(--danger);
+}
+
+.care-plan-card.status-due-soon {
+  border-left-color: var(--warn);
+}
+
+.care-plan-card.status-scheduled {
+  border-left-color: #1d4ed8;
+}
+
+.care-plan-card.status-optional {
+  border-left-color: rgba(49, 68, 82, 0.35);
+}
+
+.care-plan-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.care-plan-card-actions .button-secondary,
+.care-plan-card-actions .button-primary,
+.care-plan-card-actions .button-danger-outline {
+  padding: 10px 14px;
+  font-size: 0.86rem;
+}
+
+.care-plan-panel.is-hidden {
+  display: none !important;
 }
 
 .home-status-grid {
@@ -288,6 +353,65 @@ textarea {
   margin-top: 0;
 }
 
+.visits-action-bar,
+.care-team-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.provider-select-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.button-compact {
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.care-team-provider-list {
+  scroll-margin-top: 24px;
+}
+
+#providerForm {
+  scroll-margin-top: 24px;
+}
+
+.visits-search-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.visits-filters-panel {
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.visits-filters-panel .appointment-filters {
+  padding: 0 18px 18px;
+}
+
+.filters-toggle {
+  display: block;
+  padding: 14px 18px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.filters-toggle::-webkit-details-marker {
+  display: none;
+}
+
 .record-view-toggle {
   gap: 10px;
   margin-bottom: 16px;
@@ -295,6 +419,74 @@ textarea {
 
 .record-view-toggle .button-secondary {
   min-width: 120px;
+}
+
+.compact-view-toggle .button-secondary {
+  min-width: auto;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+}
+
+.visit-record-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow);
+}
+
+.visit-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.visit-card-provider {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.visit-card-specialty {
+  display: block;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.visit-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.visit-card-grid .full-span {
+  grid-column: 1 / -1;
+}
+
+.visit-card-grid strong {
+  display: inline;
+  margin-right: 6px;
+}
+
+.visit-card-grid .meta-line {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.visit-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button-delete {
+  color: var(--danger);
+  background: rgba(180, 35, 24, 0.08);
+  border: 1px solid rgba(180, 35, 24, 0.22);
 }
 
 .timeline-container {
@@ -390,15 +582,15 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .app-shell {
+    padding-bottom: 96px;
+  }
+
   .bottom-nav {
     display: flex;
   }
 
   .tabbar {
-    display: none;
-  }
-
-  .sticky-action-bar {
     display: none;
   }
 }
@@ -420,11 +612,40 @@ textarea {
   gap: 12px;
 }
 
-.note-preset-row {
+.note-preset-row,
+.follow-up-shortcut-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.follow-up-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.follow-up-section .eyebrow {
+  margin-bottom: 0;
+}
+
+.follow-up-hint {
+  margin: 0;
+}
+
+.follow-up-shortcut.is-active {
+  color: white;
+  background: var(--primary-deep);
+}
+
+.follow-up-shortcut-row .button-secondary {
+  padding: 10px 14px;
+  font-size: 0.88rem;
 }
 
 .more-details summary {
@@ -522,6 +743,16 @@ button {
 .button-danger {
   color: white;
   background: linear-gradient(135deg, #c2410c, var(--danger));
+}
+
+.button-danger-outline {
+  color: var(--danger);
+  background: transparent;
+  border: 2px solid var(--danger);
+}
+
+.button-danger-outline:hover {
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .inline-row {
@@ -701,22 +932,6 @@ button {
   display: none !important;
 }
 
-.sticky-action-bar {
-  position: sticky;
-  bottom: 16px;
-  z-index: 10;
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 20px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 252, 247, 0.92);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--shadow);
-}
-
 @media (max-width: 840px) {
   .hero,
   .form-grid {
@@ -745,14 +960,4 @@ button {
     flex: 0 0 auto;
   }
 
-  .sticky-action-bar {
-    left: 0;
-    right: 0;
-    border-radius: 24px;
-    justify-content: stretch;
-  }
-
-  .sticky-action-bar button {
-    flex: 1 1 0;
-  }
 }

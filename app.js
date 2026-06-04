@@ -1,4 +1,9 @@
 const STORAGE_KEY = "medical-appointment-tracker-v1";
+const NEW_PROVIDER_OPTION = "__new_provider__";
+const PROVIDER_OPTION_PREFIX = "provider:";
+const CARE_PLAN_LEGACY_PROVIDER_PREFIX = "care-plan-legacy:";
+const CARE_PLAN_DELETE_CONFIRM =
+  "Delete this care plan item? This will not delete providers, appointments, or visit logs.";
 const STORAGE_VERSION = 2;
 const STORAGE_BACKUP_KEY = `${STORAGE_KEY}-backup`;
 const DEFAULT_PROVIDER_OPTIONS = ["Dr. Smith", "Dr. Patel", "Dr. Johnson", "Dentist Office", "Eye Doctor", "Primary Care"];
@@ -434,6 +439,139 @@ const RECOMMENDATION_LIBRARY = [
   },
 ];
 
+const INITIAL_CARE_PLAN = [
+  {
+    key: "vaccines-immunization-review",
+    category: "Vaccines & Labs",
+    name: "Vaccines / Immunization Review",
+    summary: "Flu, Tdap, HPV, COVID, Hep A/B",
+    frequency: "Review 1x per year",
+    frequencyMonths: 12,
+    lastCompletedDate: "2023-01-19",
+    nextDueDate: "",
+    nextDueLabel: "2026 PCP visit",
+    provider: "VIMAL GEORGE / PCP",
+    notes: "All immunizations were up to date on 01/19/2023. Review with adult PCP.",
+  },
+  {
+    key: "labs-bloodwork-plan",
+    category: "Vaccines & Labs",
+    name: "Labs / Bloodwork",
+    summary: "General health, iron, vitamin D, cholesterol",
+    frequency: "1x per year or as needed",
+    frequencyMonths: 12,
+    lastCompletedDate: "2025-06-09",
+    nextDueDate: "2026-06-01",
+    provider: "PCP",
+    notes: "Annual bloodwork. Include CBC, iron/ferritin, vitamin D, cholesterol if needed.",
+  },
+  {
+    key: "obgyn-womens-health-plan",
+    category: "Women's Health",
+    name: "OB-GYN / Women's Health",
+    summary: "Cycle health, pelvic care, IUD follow-up",
+    frequency: "1x per year",
+    frequencyMonths: 12,
+    lastCompletedDate: "2026-03-18",
+    nextDueDate: "2027-01-01",
+    provider: "Dr. Souhail Asfouri, MD, FACOG",
+    place: "Austin Southwest OB / GYN - 4316 James Casey St, Bldg. F, Ste 200, Austin, TX 78745",
+    notes:
+      "Liletta IUD placed 01/29/2026, effective 8 years. Past: Central Texas OB/GYN Associates, Mary Brown. Skyla inserted 03/28/2022, expired/displaced.",
+  },
+  {
+    key: "sti-std-screening",
+    category: "Sexual Health",
+    name: "STI / STD Screening",
+    summary: "Preventive sexual health screening",
+    frequency: "1x per year if sexually active; every 3–6 months with new partners",
+    frequencyMonths: 12,
+    lastCompletedDate: "2026-03-18",
+    scheduledDate: "2026-04-28",
+    scheduledTime: "13:20",
+    nextDueDate: "2026-04-28",
+    provider: "Austin Public Health Sexual Health Clinic or Planned Parenthood",
+    notes: "Positive chlamydia 02/03/2026, treated 02/04/2026–02/11/2026, follow-up in March 2026.",
+  },
+  {
+    key: "dentist-care-plan",
+    category: "Dental",
+    name: "Dentist",
+    summary: "Cleaning, cavity and gum check, X-rays",
+    frequency: "Every 6 months",
+    frequencyMonths: 6,
+    lastCompletedDate: "2025-11-04",
+    scheduledDate: "2026-05-05",
+    scheduledTime: "08:00",
+    nextDueDate: "2026-05-05",
+    place: "Lone Star Pediatric Dental & Braces - Bee Cave, 14058 Bee Cave Pkwy building d suite b, Austin, TX 78738",
+  },
+  {
+    key: "eye-exam-care-plan",
+    category: "Vision",
+    name: "Eye Exam",
+    summary: "Vision check, eye strain, prescription update",
+    frequency: "1x per year",
+    frequencyMonths: 12,
+    lastCompletedDate: "2026-02-27",
+    nextDueDate: "2027-02-01",
+    provider: "Dr. Amber Nelson",
+    place: "Bristol Family Eyecare - Bee Cave",
+  },
+  {
+    key: "dermatologist-care-plan",
+    category: "Dermatology",
+    name: "Dermatologist",
+    summary: "Acne, rashes, moles, skin baseline",
+    frequency: "As needed / optional yearly",
+    frequencyMonths: null,
+    isOptional: true,
+    scheduledDate: "2026-04-28",
+    scheduledTime: "14:10",
+    provider: "Melinda Conroy, DO",
+    place: "Westlake Dermatology & Cosmetic Surgery - Lakeway, 401 RR 620 South, Suite 200, Lakeway, TX 78734",
+    notes: "Optional yearly skin baseline.",
+  },
+  {
+    key: "mental-health-care-plan",
+    category: "Mental Health",
+    name: "Mental Health",
+    summary: "Stress regulation, emotional health, and prevention",
+    frequency: "2x/week",
+    frequencyMonths: null,
+    lastCompletedDate: "2026-02-27",
+    nextDueDate: "2026-03-04",
+    scheduledDate: "2026-03-04",
+    scheduledTime: "20:00",
+    provider: "Amanda Roberts; Marianne Nemri - Grow Therapy; Heidi Simpson - Headway",
+    notes: "Last sessions: 02/27 Lisa, 02/24 Marianne, 02/23 Heidi. Heidi Simpson $30. Recovery code: 7EURUXDP49QSKNDJEALXSEFR",
+  },
+  {
+    key: "medications-review-plan",
+    category: "Medications",
+    name: "Medications Review",
+    summary: "Current meds, refills, side effects",
+    frequency: "Review at every appointment",
+    frequencyMonths: null,
+    lastCompletedDate: "2025-06-09",
+    nextDueLabel: "Next PCP visit",
+    provider: "PCP",
+    notes: "Review at each appointment.",
+  },
+  {
+    key: "annual-health-reset",
+    category: "Annual Reset",
+    name: "Annual Health Reset",
+    summary: "Book yearly appointments and update health info",
+    frequency: "1x per year",
+    frequencyMonths: 12,
+    lastCompletedDate: "2025-06-01",
+    nextDueLabel: "2026-01-01 to 2026-06-30",
+    notes:
+      "Review providers, insurance, vaccines, labs, dental, eye, OB-GYN, STI screening, dermatology, and mental health.",
+  },
+];
+
 const state = loadState();
 
 const appointmentForm = document.querySelector("#appointmentForm");
@@ -454,9 +592,6 @@ const dashboardAddAppointmentButton = document.querySelector("#dashboardAddAppoi
 const dashboardAddVisitLogButton = document.querySelector("#dashboardAddVisitLogButton");
 const dashboardViewCareTeamButton = document.querySelector("#dashboardViewCareTeamButton");
 const dashboardInsuranceButton = document.querySelector("#dashboardInsuranceButton");
-const stickyAddAppointmentButton = document.querySelector("#stickyAddAppointmentButton");
-const stickyAddVisitLogButton = document.querySelector("#stickyAddVisitLogButton");
-const stickySearchButton = document.querySelector("#stickySearchButton");
 const notificationButton = document.querySelector("#notificationButton");
 const suggestionPreview = document.querySelector("#suggestionPreview");
 const reminderPreview = document.querySelector("#reminderPreview");
@@ -473,22 +608,35 @@ const appointmentSpecialtyFilter = document.querySelector("#appointmentSpecialty
 const appointmentProviderFilter = document.querySelector("#appointmentProviderFilter");
 const recordTypeFilter = document.querySelector("#recordTypeFilter");
 const recordSortSelect = document.querySelector("#recordSortSelect");
-const showAddAppointmentFlow = document.querySelector("#showAddAppointmentFlow");
-const showLogPastVisitFlow = document.querySelector("#showLogPastVisitFlow");
-const appointmentModeButton = showAddAppointmentFlow;
-const visitLogModeButton = showLogPastVisitFlow;
+const visitsPanels = [...document.querySelectorAll("[data-visits-view]")];
+const visitsAddAppointmentButton = document.querySelector("#visitsAddAppointmentButton");
+const visitsLogVisitButton = document.querySelector("#visitsLogVisitButton");
+const visitsSearchFilterButton = document.querySelector("#visitsSearchFilterButton");
+const visitsFiltersPanel = document.querySelector("#visitsFiltersPanel");
+const appointmentFormBack = document.querySelector("#appointmentFormBack");
+const visitLogFormBack = document.querySelector("#visitLogFormBack");
+const visitLogFollowUpHint = document.querySelector("#visitLogFollowUpHint");
+const appointmentFollowUpHint = document.querySelector("#appointmentFollowUpHint");
+const homeViewVisitsAction = document.querySelector("#homeViewVisitsAction");
+const homeCareTeamAction = document.querySelector("#homeCareTeamAction");
+const homeInsuranceAction = document.querySelector("#homeInsuranceAction");
 const visitLogFormMount = document.querySelector("#visitLogFormMount");
 const providerForm = document.querySelector("#providerForm");
 const providerSpecialtySelect = document.querySelector("#providerSpecialtySelect");
 const providerCustomSpecialtyLabel = document.querySelector("#providerCustomSpecialtyLabel");
 const careTeamList = document.querySelector("#careTeamList");
-const careTeamActivityList = document.querySelector("#careTeamActivityList");
 const customProviderLabel = document.querySelector("#customProviderLabel");
 const customSpecialtyLabel = document.querySelector("#customSpecialtyLabel");
 const customReasonLabel = document.querySelector("#customReasonLabel");
 const visitLogForm = document.querySelector("#visitLogForm");
 const visitLogFormTitle = document.querySelector("#visitLogFormTitle");
 const visitLogProviderSelect = document.querySelector("#visitLogProviderSelect");
+const editProvidersButton = document.querySelector("#editProvidersButton");
+const careTeamAddProviderButton = document.querySelector("#careTeamAddProviderButton");
+const careTeamManageProvidersButton = document.querySelector("#careTeamManageProvidersButton");
+const providerFormId = document.querySelector("#providerFormId");
+const providerSubmitButton = document.querySelector("#providerSubmitButton");
+const providerFormCancelButton = document.querySelector("#providerFormCancelButton");
 const visitLogQuickTemplate = document.querySelector("#visitLogQuickTemplate");
 const visitLogSpecialtySelect = document.querySelector("#visitLogSpecialtySelect");
 const visitLogCustomSpecialtyLabel = document.querySelector("#visitLogCustomSpecialtyLabel");
@@ -514,7 +662,6 @@ const importBackupButton = document.querySelector("#importBackupButton");
 const importBackupInput = document.querySelector("#importBackupInput");
 const homeAddAppointmentAction = document.querySelector("#homeAddAppointmentAction");
 const homeLogVisitAction = document.querySelector("#homeLogVisitAction");
-const homeAddProviderAction = document.querySelector("#homeAddProviderAction");
 const homeTodayList = document.querySelector("#homeTodayList");
 const homeUpcomingList = document.querySelector("#homeUpcomingList");
 const homeOverdueList = document.querySelector("#homeOverdueList");
@@ -524,6 +671,20 @@ const homeScheduledCount = document.querySelector("#homeScheduledCount");
 const recordViewButtons = [...document.querySelectorAll("[data-record-view]")];
 const visitTimelineContainer = document.querySelector("#visitTimelineContainer");
 const visitTimelineList = document.querySelector("#visitTimelineList");
+const carePlanList = document.querySelector("#carePlanList");
+const carePlanSearchInput = document.querySelector("#carePlanSearchInput");
+const carePlanFilterButtons = [...document.querySelectorAll("[data-care-plan-filter]")];
+const carePlanPanels = [...document.querySelectorAll("[data-care-plan-view]")];
+const carePlanForm = document.querySelector("#carePlanForm");
+const carePlanFormTitle = document.querySelector("#carePlanFormTitle");
+const carePlanFormBack = document.querySelector("#carePlanFormBack");
+const carePlanAddItemButton = document.querySelector("#carePlanAddItemButton");
+const carePlanSubmitButton = document.querySelector("#carePlanSubmitButton");
+const carePlanCancelButton = document.querySelector("#carePlanCancelButton");
+const carePlanNextDueHint = document.querySelector("#carePlanNextDueHint");
+const carePlanProviderSelect = document.querySelector("#carePlanProviderSelect");
+const carePlanDeleteButton = document.querySelector("#carePlanDeleteButton");
+const homeCarePlanAction = document.querySelector("#homeCarePlanAction");
 
 let editingAppointmentId = "";
 let activeRecordView = "list";
@@ -534,11 +695,15 @@ let activeAddEditMode = "appointment";
 let visitHistorySelectMode = false;
 let selectedRecordIds = new Set();
 let activeVisitHistoryFilter = "all";
+let activeVisitsView = "list";
 let activeSubtabs = {
   dashboard: "overview",
-  appointments: "form",
-  "care-team": "providers",
 };
+let editingProviderId = "";
+let pendingProviderSelection = null;
+let activeCarePlanFilter = "all";
+let editingCarePlanId = "";
+let pendingCarePlanItemId = "";
 
 function on(element, eventName, handler) {
   if (element) element.addEventListener(eventName, handler);
@@ -551,10 +716,12 @@ function onAll(elements, eventName, handlerFactory) {
 }
 
 bindEvents();
+migrateProvidersInPlace();
 mergeInitialAppointmentLogs();
+mergeInitialCarePlan();
 syncForms();
 mountVisitLogForm();
-setAddEditMode("none");
+showVisitsList();
 render();
 renderVisitHistoryGlobalList();
 maybeSendBrowserNotifications();
@@ -566,14 +733,33 @@ function bindEvents() {
   on(providerForm, "submit", handleProviderSubmit);
   on(visitLogForm, "submit", handleVisitLogSubmit);
   on(visitLogForm, "click", handleVisitLogFormClick);
+  on(visitLogForm, "click", handleVisitLogFollowUpShortcutClick);
+  on(appointmentForm, "click", handleAppointmentFollowUpShortcutClick);
+  if (visitLogForm?.elements.date) {
+    on(visitLogForm.elements.date, "change", () => syncFollowUpShortcutButtons(visitLogForm, "follow-up"));
+  }
+  if (appointmentForm?.elements.appointmentDate) {
+    on(appointmentForm.elements.appointmentDate, "change", () => {
+      syncAppointmentPreview();
+      syncFollowUpShortcutButtons(appointmentForm, "next-visit");
+    });
+  }
   on(visitLogQuickTemplate, "change", handleVisitLogTemplateChange);
   on(visitLogQuickSaveButton, "click", () => saveVisitLog({ addAnother: false }));
   on(visitLogSaveAddAnotherButton, "click", () => saveVisitLog({ addAnother: true }));
   if (visitLogSaveFollowUpButton) {
     on(visitLogSaveFollowUpButton, "click", () => saveVisitLog({ addAnother: false, scheduleFollowUp: true }));
   }
-  on(appointmentCancelButton, "click", resetAppointmentForm);
-  on(visitLogCancelButton, "click", resetVisitLogForm);
+  on(appointmentCancelButton, "click", () => {
+    pendingCarePlanItemId = "";
+    resetAppointmentForm();
+    showVisitsList();
+  });
+  on(visitLogCancelButton, "click", () => {
+    pendingCarePlanItemId = "";
+    resetVisitLogForm();
+    showVisitsList();
+  });
   on(appointmentList, "click", handleAppointmentListClick);
   on(appointmentList, "submit", handleInlineVisitLogSubmit);
   on(dashboardAppointmentList, "click", handleAppointmentListClick);
@@ -598,11 +784,28 @@ function bindEvents() {
   on(appointmentProviderFilter, "change", render);
   on(recordTypeFilter, "change", render);
   on(recordSortSelect, "change", render);
-  if (showAddAppointmentFlow) {
-    on(showAddAppointmentFlow, "click", () => openEntryFlow("appointment"));
+  if (visitsAddAppointmentButton) {
+    on(visitsAddAppointmentButton, "click", openAppointmentForm);
   }
-  if (showLogPastVisitFlow) {
-    on(showLogPastVisitFlow, "click", () => openEntryFlow("visit-log"));
+  if (visitsLogVisitButton) {
+    on(visitsLogVisitButton, "click", () => openVisitLogTab("", true));
+  }
+  if (visitsSearchFilterButton) {
+    on(visitsSearchFilterButton, "click", focusVisitsSearchAndFilters);
+  }
+  if (appointmentFormBack) {
+    on(appointmentFormBack, "click", () => {
+      pendingCarePlanItemId = "";
+      resetAppointmentForm();
+      showVisitsList();
+    });
+  }
+  if (visitLogFormBack) {
+    on(visitLogFormBack, "click", () => {
+      pendingCarePlanItemId = "";
+      resetVisitLogForm();
+      showVisitsList();
+    });
   }
   if (exportBackupButton) {
     on(exportBackupButton, "click", exportBackup);
@@ -619,12 +822,76 @@ function bindEvents() {
   if (homeLogVisitAction) {
     on(homeLogVisitAction, "click", () => openVisitLogTab("", true));
   }
-  if (homeAddProviderAction) {
-    on(homeAddProviderAction, "click", () => {
-      switchScreen("care-team");
-      setSubtab("care-team", "providers");
+  if (homeViewVisitsAction) {
+    on(homeViewVisitsAction, "click", () => {
+      switchScreen("appointments");
+      showVisitsList();
     });
   }
+  if (homeCareTeamAction) {
+    on(homeCareTeamAction, "click", () => openCareTeamProviders({ scrollToList: true }));
+  }
+  if (editProvidersButton) {
+    on(editProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
+  }
+  if (careTeamAddProviderButton) {
+    on(careTeamAddProviderButton, "click", () => openCareTeamProviders({ focusForm: true }));
+  }
+  if (careTeamManageProvidersButton) {
+    on(careTeamManageProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
+  }
+  if (providerFormCancelButton) {
+    on(providerFormCancelButton, "click", resetProviderForm);
+  }
+  if (homeInsuranceAction) {
+    on(homeInsuranceAction, "click", () => switchScreen("insurance"));
+  }
+  if (homeCarePlanAction) {
+    on(homeCarePlanAction, "click", () => switchScreen("care-plan"));
+  }
+  if (carePlanAddItemButton) {
+    on(carePlanAddItemButton, "click", () => openCarePlanForm());
+  }
+  if (carePlanFormBack) {
+    on(carePlanFormBack, "click", showCarePlanList);
+  }
+  if (carePlanCancelButton) {
+    on(carePlanCancelButton, "click", showCarePlanList);
+  }
+  if (carePlanForm) {
+    on(carePlanForm, "submit", handleCarePlanSubmit);
+    on(carePlanForm, "click", handleCarePlanDueShortcutClick);
+    if (carePlanForm.elements.lastCompletedDate) {
+      on(carePlanForm.elements.lastCompletedDate, "change", () => syncCarePlanDueShortcutButtons());
+    }
+  }
+  if (carePlanProviderSelect) {
+    on(carePlanProviderSelect, "change", handleCarePlanProviderSelectChange);
+  }
+  if (carePlanDeleteButton) {
+    on(carePlanDeleteButton, "click", () => {
+      if (editingCarePlanId) {
+        deleteCarePlanItem(editingCarePlanId);
+      }
+    });
+  }
+  if (carePlanList) {
+    on(carePlanList, "click", handleCarePlanListClick);
+  }
+  if (carePlanSearchInput) {
+    on(carePlanSearchInput, "input", render);
+  }
+  carePlanFilterButtons.forEach((button) => {
+    if (button) {
+      button.addEventListener("click", () => {
+        activeCarePlanFilter = button.dataset.carePlanFilter || "all";
+        carePlanFilterButtons.forEach((item) => {
+          item.classList.toggle("is-active", item === button);
+        });
+        render();
+      });
+    }
+  });
   recordViewButtons.forEach((button) => {
     if (button) button.addEventListener("click", () => setRecordView(button.dataset.recordView));
   });
@@ -632,19 +899,9 @@ function bindEvents() {
     openAppointmentForm();
   });
   on(dashboardAddAppointmentButton, "click", openAppointmentForm);
-  on(stickyAddAppointmentButton, "click", openAppointmentForm);
   on(dashboardAddVisitLogButton, "click", () => openVisitLogTab(editingAppointmentId || ""));
-  on(stickyAddVisitLogButton, "click", () => openVisitLogTab(editingAppointmentId || ""));
-  on(dashboardViewCareTeamButton, "click", () => {
-    switchScreen("care-team");
-    setSubtab("care-team", "providers");
-  });
+  on(dashboardViewCareTeamButton, "click", () => openCareTeamProviders({ scrollToList: true }));
   on(dashboardInsuranceButton, "click", () => switchScreen("insurance"));
-  on(stickySearchButton, "click", () => {
-    switchScreen("appointments");
-    setSubtab("appointments", "records");
-    if (appointmentSearchInput) appointmentSearchInput.focus();
-  });
   on(notificationButton, "click", requestNotificationPermission);
   screenButtons.forEach((button) => {
     if (button) button.addEventListener("click", () => switchScreen(button.dataset.screenTarget));
@@ -679,7 +936,7 @@ function bindEvents() {
       setSubtab(subtabButton.dataset.subtabGroup, subtabButton.dataset.subtabTarget);
     }
   });
-  on(providerSelect, "change", syncCustomFieldVisibility);
+  on(providerSelect, "change", handleAppointmentProviderSelectChange);
   on(specialtySelect, "change", syncCustomFieldVisibility);
   on(reasonSelect, "change", syncCustomFieldVisibility);
   on(providerSpecialtySelect, "change", syncProviderCustomSpecialtyVisibility);
@@ -698,33 +955,52 @@ function bindEvents() {
   });
 }
 
-function openAppointmentForm() {
+function showVisitsView(view) {
+  activeVisitsView = view;
+  visitsPanels.forEach((panel) => {
+    panel.classList.toggle("is-hidden", panel.dataset.visitsView !== view);
+    panel.classList.toggle("is-active", panel.dataset.visitsView === view);
+  });
+}
+
+function showVisitsList() {
+  showVisitsView("list");
+  setAddEditMode("none");
+}
+
+function focusVisitsSearchAndFilters() {
   switchScreen("appointments");
-  setSubtab("appointments", "form");
+  showVisitsList();
+  if (visitsFiltersPanel) {
+    visitsFiltersPanel.open = true;
+  }
+  if (appointmentSearchInput) {
+    appointmentSearchInput.focus();
+    appointmentSearchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function openAppointmentForm() {
+  pendingCarePlanItemId = "";
+  switchScreen("appointments");
+  showVisitsView("appointment-form");
   setAddEditMode("appointment");
   resetAppointmentForm();
+  renderAllProviderDropdowns();
 }
 
 function openVisitLogTab(appointmentId = "", setToday = false) {
+  pendingCarePlanItemId = "";
   switchScreen("appointments");
-  setSubtab("appointments", "form");
+  showVisitsView("visit-log-form");
   setAddEditMode("visit-log");
+  renderAllProviderDropdowns();
   if (appointmentId) {
     prefillVisitLogForm(appointmentId);
     if (setToday && !visitLogForm.elements.date.value) {
       visitLogForm.elements.date.value = todayString();
     }
   } else {
-    resetVisitLogForm();
-  }
-}
-
-function openEntryFlow(mode) {
-  if (mode === "appointment") {
-    setAddEditMode("appointment");
-    resetAppointmentForm();
-  } else if (mode === "visit-log") {
-    setAddEditMode("visit-log");
     resetVisitLogForm();
   }
 }
@@ -737,20 +1013,6 @@ function mountVisitLogForm() {
 
 function setAddEditMode(mode) {
   activeAddEditMode = mode;
-  const showingAppointment = mode === "appointment";
-  const showingVisitLog = mode === "visit-log";
-  appointmentForm.classList.toggle("is-hidden", !showingAppointment);
-  visitLogForm.classList.toggle("is-hidden", !showingVisitLog);
-  if (appointmentModeButton) {
-    appointmentModeButton.classList.toggle("is-active", showingAppointment);
-    appointmentModeButton.classList.toggle("button-primary", showingAppointment);
-    appointmentModeButton.classList.toggle("button-secondary", !showingAppointment);
-  }
-  if (visitLogModeButton) {
-    visitLogModeButton.classList.toggle("is-active", showingVisitLog);
-    visitLogModeButton.classList.toggle("button-primary", showingVisitLog);
-    visitLogModeButton.classList.toggle("button-secondary", !showingVisitLog);
-  }
 }
 
 function setSubtab(group, target) {
@@ -767,12 +1029,6 @@ function setSubtab(group, target) {
     }
   });
 
-  if (group === "appointments" && target === "records") {
-    renderVisitHistoryGlobalList();
-  }
-  if (group === "care-team" && target === "providers") {
-    renderCareTeam();
-  }
 }
 
 function handleAppointmentSubmit(event) {
@@ -788,10 +1044,7 @@ function handleAppointmentSubmit(event) {
     : [];
   const appointment = {
     id: cleanText(formData.get("appointmentId")) || crypto.randomUUID(),
-    doctor:
-      cleanText(formData.get("doctor")) === "__custom__"
-        ? cleanText(formData.get("customDoctor"))
-        : cleanText(formData.get("doctor")),
+    doctor: resolveAppointmentDoctorValue(cleanText(formData.get("doctor")), cleanText(formData.get("customDoctor"))),
     specialty:
       cleanText(formData.get("specialty")) === "__custom__"
         ? cleanText(formData.get("customSpecialty"))
@@ -819,8 +1072,10 @@ function handleAppointmentSubmit(event) {
     medications: cleanText(formData.get("medications")),
     testResults: cleanText(formData.get("testResults")),
     resultFiles: resultFiles.length ? resultFiles : existingAppointment?.resultFiles || [],
-    visitHistory: normalizeVisitHistory(existingAppointment?.visitHistory || []),
+    visitHistory: [],
     notes: cleanText(formData.get("notes")),
+    userCreated: true,
+    autoGeneratedFromVisitLog: false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -830,16 +1085,24 @@ function handleAppointmentSubmit(event) {
 
   const existingIndex = state.appointments.findIndex((item) => item.id === appointment.id);
   if (existingIndex >= 0) {
-    state.appointments[existingIndex] = { ...state.appointments[existingIndex], ...appointment };
+    state.appointments[existingIndex] = {
+      ...state.appointments[existingIndex],
+      ...appointment,
+      userCreated: true,
+      autoGeneratedFromVisitLog: false,
+    };
   } else {
-    state.appointments.unshift({ ...appointment, createdAt: new Date().toISOString() });
+    state.appointments.unshift({ ...appointment, createdAt: new Date().toISOString(), userCreated: true });
   }
 
   persist();
+  if (pendingCarePlanItemId) {
+    applyCarePlanAppointmentScheduled(pendingCarePlanItemId, appointment);
+    pendingCarePlanItemId = "";
+  }
   resetAppointmentForm();
   render();
-  switchScreen("appointments");
-  setSubtab("appointments", "records");
+  showVisitsList();
 }
 
 function handleInsuranceSubmit(event) {
@@ -885,29 +1148,35 @@ function handleProviderSubmit(event) {
   const rawSpecialty = cleanText(formData.get("specialty"));
   const specialty = rawSpecialty === "__custom__" ? cleanText(formData.get("customSpecialty")) || "General" : rawSpecialty || "General";
 
-  if (!doctor || !clinic) {
+  if (!doctor) {
     return;
   }
 
-  const providerKey = normalizeLookupKey(`${doctor}|${specialty}|${clinic}`);
-  const existingIndex = state.providers.findIndex((provider) => {
-    const providerClinic = cleanText(provider.clinic);
-    return normalizeLookupKey(`${provider.doctor}|${provider.specialty}|${providerClinic}`) === providerKey;
-  });
+  const providerKey = normalizeLookupKey(`${doctor}|${specialty}|${clinic || "unspecified"}`);
+  const savedProviderId = cleanText(formData.get("providerId"));
+  const existingIndex = savedProviderId
+    ? state.providers.findIndex((provider) => provider.id === savedProviderId)
+    : state.providers.findIndex((provider) => provider.key === providerKey);
 
-  const providerRecord = {
+  const providerRecord = normalizeProvider({
     id: existingIndex >= 0 ? state.providers[existingIndex].id : crypto.randomUUID(),
     key: providerKey,
     doctor,
+    name: doctor,
     specialty,
-    clinic,
+    clinic: clinic || "",
     address: cleanText(formData.get("place")),
     phone: cleanText(formData.get("contactPhone")),
     insuranceAccepted: cleanText(formData.get("insuranceAccepted")),
     portalLink: cleanText(formData.get("portalLink")),
+    notes: cleanText(formData.get("notes")),
     createdAt: existingIndex >= 0 ? state.providers[existingIndex].createdAt || new Date().toISOString() : new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  });
+
+  if (!providerRecord) {
+    return;
+  }
 
   if (existingIndex >= 0) {
     state.providers[existingIndex] = providerRecord;
@@ -915,16 +1184,316 @@ function handleProviderSubmit(event) {
     state.providers.push(providerRecord);
   }
 
-  console.log('Saved providers:', state.providers);
-
-  providerForm.reset();
-  syncProviderCustomSpecialtyVisibility();
   persist();
-  renderCareTeam();
+  resetProviderForm();
+  renderAllProviderDropdowns();
+  render();
+  const hadPendingSelection = Boolean(pendingProviderSelection);
+  applyPendingProviderSelection(providerRecord);
+  if (!hadPendingSelection) {
+    openCareTeamProviders({ scrollToList: true });
+  }
 }
 
 function syncProviderCustomSpecialtyVisibility() {
   providerCustomSpecialtyLabel.classList.toggle("is-hidden", providerSpecialtySelect.value !== "__custom__");
+}
+
+function openCareTeamProviders({ focusForm = false, scrollToList = false } = {}) {
+  switchScreen("care-team");
+  renderCareTeam();
+  requestAnimationFrame(() => {
+    if (scrollToList && careTeamList) {
+      careTeamList.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    if (focusForm && providerForm) {
+      providerForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      providerForm.elements.doctor?.focus();
+    }
+  });
+}
+
+function openCareTeamForNewProvider(target) {
+  pendingProviderSelection = { target };
+  resetProviderForm();
+  openCareTeamProviders({ focusForm: true });
+}
+
+function resetProviderForm() {
+  editingProviderId = "";
+  providerForm.reset();
+  if (providerFormId) {
+    providerFormId.value = "";
+  }
+  if (providerSubmitButton) {
+    providerSubmitButton.textContent = "Add Provider";
+  }
+  if (providerFormCancelButton) {
+    providerFormCancelButton.classList.add("is-hidden");
+  }
+  syncProviderCustomSpecialtyVisibility();
+}
+
+function loadProviderIntoForm(provider) {
+  editingProviderId = provider.id;
+  if (providerFormId) {
+    providerFormId.value = provider.id;
+  }
+  providerForm.elements.doctor.value = getProviderRecordName(provider);
+  providerForm.elements.clinic.value = provider.clinic || "";
+  providerForm.elements.place.value = provider.address || "";
+  providerForm.elements.contactPhone.value = provider.phone || "";
+  providerForm.elements.insuranceAccepted.value = provider.insuranceAccepted || "";
+  providerForm.elements.portalLink.value = provider.portalLink || "";
+  if (providerForm.elements.notes) {
+    providerForm.elements.notes.value = provider.notes || "";
+  }
+  setSelectWithCustomValue(providerSpecialtySelect, providerForm.elements.customSpecialty, provider.specialty || "");
+  syncProviderCustomSpecialtyVisibility();
+  if (providerSubmitButton) {
+    providerSubmitButton.textContent = "Save Provider";
+  }
+  if (providerFormCancelButton) {
+    providerFormCancelButton.classList.remove("is-hidden");
+  }
+}
+
+function applyPendingProviderSelection(providerRecord) {
+  if (!pendingProviderSelection || !providerRecord) {
+    return;
+  }
+
+  const { target, carePlanId } = pendingProviderSelection;
+  pendingProviderSelection = null;
+  renderAllProviderDropdowns();
+
+  if (target === "appointment") {
+    providerSelect.value = `${PROVIDER_OPTION_PREFIX}${providerRecord.id}`;
+    syncAppointmentProviderDetails();
+    syncCustomFieldVisibility();
+    switchScreen("appointments");
+    showVisitsView("appointment-form");
+    return;
+  }
+
+  if (target === "visitLog") {
+    visitLogProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${providerRecord.id}`;
+    syncVisitLogProviderSelection();
+    switchScreen("appointments");
+    showVisitsView("visit-log-form");
+    return;
+  }
+
+  if (target === "carePlan") {
+    const carePlanItem = carePlanId ? state.carePlan.find((entry) => entry.id === carePlanId) : null;
+    switchScreen("care-plan");
+    showCarePlanView("form");
+    renderCarePlanProviderSelect(carePlanItem);
+    if (carePlanProviderSelect) {
+      carePlanProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${providerRecord.id}`;
+      carePlanProviderSelect.dataset.lastValue = carePlanProviderSelect.value;
+    }
+  }
+}
+
+function handleAppointmentProviderSelectChange() {
+  if (providerSelect.value === NEW_PROVIDER_OPTION) {
+    providerSelect.value = "";
+    openCareTeamForNewProvider("appointment");
+    return;
+  }
+  syncAppointmentProviderDetails();
+  syncCustomFieldVisibility();
+}
+
+function syncAppointmentProviderDetails() {
+  const provider = getProviderFromSelectValue(providerSelect.value);
+  if (!provider) {
+    return;
+  }
+
+  setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, provider.specialty || "");
+  appointmentForm.elements.clinic.value = provider.clinic || "";
+  appointmentForm.elements.place.value = provider.address || "";
+  appointmentForm.elements.contactPhone.value = provider.phone || "";
+  appointmentForm.elements.insuranceAccepted.value = provider.insuranceAccepted || "";
+  appointmentForm.elements.portalLink.value = provider.portalLink || "";
+  syncCustomFieldVisibility();
+}
+
+function getProviderRecordName(provider) {
+  if (!provider) {
+    return "";
+  }
+  return (
+    cleanText(provider.name) ||
+    cleanText(provider.doctor) ||
+    cleanText(provider.provider) ||
+    cleanText(provider.providerName)
+  );
+}
+
+function findCareTeamProviderByDoctor(doctor) {
+  const doctorKey = normalizeLookupKey(doctor);
+  return getAllProviders().find((provider) => normalizeLookupKey(getProviderRecordName(provider)) === doctorKey);
+}
+
+function formatProviderDropdownLabel(name, specialty) {
+  const providerName = cleanText(name) || "Unknown provider";
+  const detail = cleanText(specialty);
+  return detail ? `${providerName} • ${detail}` : providerName;
+}
+
+function getAllProviders() {
+  return (state.providers || [])
+    .map((provider) => normalizeProvider(provider) || provider)
+    .filter((provider) => getProviderRecordName(provider))
+    .sort((a, b) =>
+      getProviderRecordName(a).localeCompare(getProviderRecordName(b), undefined, { sensitivity: "base" })
+    );
+}
+
+function getCareTeamProviders() {
+  return getAllProviders();
+}
+
+function migrateProvidersInPlace() {
+  const previousSnapshot = JSON.stringify(state.providers || []);
+  state.providers = (state.providers || []).map(normalizeProvider).filter(Boolean);
+  if (JSON.stringify(state.providers) !== previousSnapshot) {
+    persist();
+  }
+}
+
+function getProviderFromSelectValue(value) {
+  const selection = cleanText(value);
+  if (!selection || selection === "__custom__" || selection === NEW_PROVIDER_OPTION) {
+    return null;
+  }
+  if (selection.startsWith(PROVIDER_OPTION_PREFIX)) {
+    return getAllProviders().find((provider) => provider.id === selection.slice(PROVIDER_OPTION_PREFIX.length)) || null;
+  }
+  return findCareTeamProviderByDoctor(selection);
+}
+
+function resolveAppointmentDoctorValue(rawDoctorValue, customDoctorValue) {
+  if (rawDoctorValue === "__custom__") {
+    return cleanText(customDoctorValue);
+  }
+  const provider = getProviderFromSelectValue(rawDoctorValue);
+  if (provider) {
+    return getProviderRecordName(provider);
+  }
+  return cleanText(rawDoctorValue);
+}
+
+function buildCareTeamProviderSelectOptions({
+  placeholder = "Select provider",
+  includeCustom = false,
+} = {}) {
+  const lines = [`<option value="">${escapeHtml(placeholder)}</option>`];
+
+  getAllProviders().forEach((provider) => {
+    lines.push(
+      `<option value="${PROVIDER_OPTION_PREFIX}${escapeHtml(provider.id)}">${escapeHtml(
+        formatProviderDropdownLabel(getProviderRecordName(provider), provider.specialty)
+      )}</option>`
+    );
+  });
+
+  lines.push(`<option value="${NEW_PROVIDER_OPTION}">+ Add new provider</option>`);
+  if (includeCustom) {
+    lines.push(`<option value="__custom__">Custom provider name</option>`);
+  }
+  return lines.join("");
+}
+
+function providerMatchesAppointment(provider, appointment) {
+  return (
+    normalizeLookupKey(getProviderRecordName(provider)) === normalizeLookupKey(appointment.doctor) &&
+    normalizeLookupKey(provider.specialty || "") === normalizeLookupKey(appointment.specialty || "") &&
+    normalizeLookupKey(provider.clinic || "") ===
+      normalizeLookupKey(appointment.clinic || extractClinicName(appointment.place) || "")
+  );
+}
+
+function getVisitLogSelectValueForAppointment(appointmentId) {
+  const appointment = getDisplayableAppointments().find((item) => item.id === appointmentId);
+  if (!appointment) {
+    const linkedLog = state.visitLogs.find((log) => log.linkedAppointmentId === appointmentId);
+    if (linkedLog?.providerId) {
+      return `${PROVIDER_OPTION_PREFIX}${linkedLog.providerId}`;
+    }
+    return appointmentId;
+  }
+  const provider = getAllProviders().find((item) => providerMatchesAppointment(item, appointment));
+  return provider ? `${PROVIDER_OPTION_PREFIX}${provider.id}` : appointmentId;
+}
+
+function getDisplayableAppointments() {
+  return state.appointments.filter((appointment) => !shouldHideAutoGeneratedAppointment(appointment, state.visitLogs));
+}
+
+function getVisitLogProviderContext(selection) {
+  const value = cleanText(selection);
+  if (!value) {
+    return null;
+  }
+
+  if (value.startsWith(PROVIDER_OPTION_PREFIX)) {
+    const provider = getAllProviders().find((item) => item.id === value.slice(PROVIDER_OPTION_PREFIX.length));
+    if (!provider) {
+      return null;
+    }
+    return {
+      providerId: provider.id,
+      linkedAppointmentId: "",
+      provider: getProviderRecordName(provider),
+      specialty: provider.specialty,
+      clinic: provider.clinic,
+      phone: provider.phone,
+      portalLink: provider.portalLink,
+      insuranceAccepted: provider.insuranceAccepted,
+    };
+  }
+
+  const appointment = state.appointments.find((item) => item.id === value);
+  if (!appointment) {
+    return null;
+  }
+
+  const careProvider = findCareTeamProviderByDoctor(appointment.doctor);
+  return {
+    providerId: careProvider?.id || "",
+    linkedAppointmentId: shouldHideAutoGeneratedAppointment(appointment, state.visitLogs) ? "" : appointment.id,
+    provider: appointment.doctor,
+    specialty: appointment.specialty,
+    clinic: appointment.clinic || extractClinicName(appointment.place),
+    phone: appointment.contactPhone,
+    portalLink: appointment.portalLink,
+    insuranceAccepted: appointment.insuranceAccepted,
+  };
+}
+
+function deleteProviderVisitLogs(provider) {
+  const providerKey = normalizeLookupKey(getProviderRecordName(provider));
+  const idsToDelete = getAllVisitHistoryEntries()
+    .filter((entry) => normalizeLookupKey(entry.provider) === providerKey)
+    .map((entry) => entry.id);
+
+  if (!idsToDelete.length) {
+    window.alert(`No visit logs found for ${getProviderRecordName(provider)}.`);
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Delete ${idsToDelete.length} visit log(s) for ${getProviderRecordName(provider)}? Appointments and the provider record will stay.`
+  );
+  if (!confirmed) {
+    return;
+  }
+
+  deleteRecordsByIds(idsToDelete);
 }
 
 function handleAppointmentListClick(event) {
@@ -952,21 +1521,18 @@ function handleAppointmentListClick(event) {
   }
 
   if (editId) {
-    loadAppointmentIntoForm(editId);
     switchScreen("appointments");
-    setSubtab("appointments", "form");
+    showVisitsView("appointment-form");
     setAddEditMode("appointment");
+    loadAppointmentIntoForm(editId);
     return;
   }
 
-  if (editVisitLogId && editVisitLogAppointmentId) {
-    inlineEditingVisitLogId = editVisitLogId;
-    editingVisitLogId = "";
-    resetVisitLogForm();
+  if (editVisitLogId) {
     switchScreen("appointments");
-    setSubtab("appointments", "records");
-    renderVisitHistoryGlobalList();
-    scrollVisitLogIntoView(editVisitLogId);
+    showVisitsView("visit-log-form");
+    setAddEditMode("visit-log");
+    loadVisitLogIntoEditor(editVisitLogId);
     return;
   }
 
@@ -994,39 +1560,46 @@ function handleAppointmentListClick(event) {
 }
 
 function handleCareTeamClick(event) {
-  const providerEditKey = event.target.closest("[data-edit-provider]")?.dataset.editProvider;
-  const providerDeleteKey = event.target.closest("[data-delete-provider]")?.dataset.deleteProvider;
+  const providerEditId = event.target.closest("[data-edit-provider]")?.dataset.editProvider;
+  const providerDeleteId = event.target.closest("[data-delete-provider]")?.dataset.deleteProvider;
+  const providerDeleteLogsId = event.target.closest("[data-delete-provider-logs]")?.dataset.deleteProviderLogs;
 
-  if (providerEditKey) {
-    const provider = (state.providers || []).find((item) => item.key === providerEditKey);
+  if (providerEditId) {
+    const provider = (state.providers || []).find((item) => item.id === providerEditId);
     if (!provider) {
       return;
     }
-    providerForm.elements.doctor.value = provider.doctor || "";
-    providerForm.elements.clinic.value = provider.clinic || "";
-    providerForm.elements.place.value = provider.address || "";
-    providerForm.elements.contactPhone.value = provider.phone || "";
-    providerForm.elements.insuranceAccepted.value = provider.insuranceAccepted || "";
-    providerForm.elements.portalLink.value = provider.portalLink || "";
-    setSelectWithCustomValue(providerSpecialtySelect, providerForm.elements.customSpecialty, provider.specialty || "");
-    syncProviderCustomSpecialtyVisibility();
-    switchScreen("care-team");
-    setSubtab("care-team", "providers");
+    loadProviderIntoForm(provider);
+    openCareTeamProviders({ focusForm: true });
     return;
   }
 
-  if (providerDeleteKey) {
-    const provider = (state.providers || []).find((item) => item.key === providerDeleteKey);
+  if (providerDeleteId) {
+    const provider = (state.providers || []).find((item) => item.id === providerDeleteId);
     if (!provider) {
       return;
     }
-    const confirmed = window.confirm(`Delete ${provider.doctor} from your care team?`);
+    const confirmed = window.confirm(
+      `Remove ${getProviderRecordName(provider)} from your care team? Appointments and visit logs will stay saved.`
+    );
     if (!confirmed) {
       return;
     }
-    state.providers = (state.providers || []).filter((item) => item.key !== providerDeleteKey);
+    state.providers = (state.providers || []).filter((item) => item.id !== providerDeleteId);
+    if (editingProviderId === providerDeleteId) {
+      resetProviderForm();
+    }
     persist();
-    renderCareTeam();
+    render();
+    return;
+  }
+
+  if (providerDeleteLogsId) {
+    const provider = (state.providers || []).find((item) => item.id === providerDeleteLogsId);
+    if (!provider) {
+      return;
+    }
+    deleteProviderVisitLogs(provider);
   }
 }
 
@@ -1053,7 +1626,7 @@ function handleRecommendationListClick(event) {
   syncCustomFieldVisibility();
   syncAppointmentPreview();
   switchScreen("appointments");
-  setSubtab("appointments", "form");
+  showVisitsView("appointment-form");
 }
 
 function handleVisitLogSubmit(event) {
@@ -1080,14 +1653,10 @@ function handleVisitHistoryEditorClick(event) {
   }
 
   if (editId) {
-    inlineEditingVisitLogId = editId;
-    editingVisitLogId = "";
-    visitLogForm.elements.visitLogId.value = "";
-    visitLogSubmitButton.textContent = "Save Visit Log";
-    visitLogCancelButton.classList.add("is-hidden");
-    visitLogFormTitle.textContent = "Add visit log";
-    renderVisitHistoryGlobalList();
-    scrollVisitLogIntoView(editId);
+    switchScreen("appointments");
+    showVisitsView("visit-log-form");
+    setAddEditMode("visit-log");
+    loadVisitLogIntoEditor(editId);
     return;
   }
 
@@ -1155,29 +1724,19 @@ function handleInlineVisitLogSubmit(event) {
 }
 
 function updateVisitLogFromForm(visitLogId, form) {
-  const owningAppointment = state.appointments.find((appointment) =>
-    normalizeVisitHistory(appointment.visitHistory || []).some((log) => log.id === visitLogId)
-  );
-  if (!owningAppointment) {
+  const existingIndex = state.visitLogs.findIndex((log) => log.id === visitLogId);
+  if (existingIndex < 0) {
     return false;
   }
 
-  const existingLog = normalizeVisitHistory(owningAppointment.visitHistory || []).find((log) => log.id === visitLogId);
-  if (!existingLog) {
-    return false;
-  }
-
+  const existingLog = state.visitLogs[existingIndex];
   const formData = new FormData(form);
-  const nextLog = {
+  state.visitLogs[existingIndex] = normalizeVisitLog({
     ...existingLog,
     id: visitLogId,
     date: cleanText(formData.get("date")),
-    provider: owningAppointment.doctor,
-    clinic: cleanText(formData.get("clinic")) || owningAppointment.clinic || extractClinicName(owningAppointment.place),
-    phone: owningAppointment.contactPhone,
-    portalLink: owningAppointment.portalLink,
-    insuranceAccepted: owningAppointment.insuranceAccepted,
-    specialty: cleanText(formData.get("specialty")) || owningAppointment.specialty,
+    clinic: cleanText(formData.get("clinic")) || existingLog.clinic,
+    specialty: cleanText(formData.get("specialty")) || existingLog.specialty,
     reason: cleanText(formData.get("reason")),
     status: cleanText(formData.get("status")) || "Completed",
     summary: cleanText(formData.get("summary")),
@@ -1185,11 +1744,8 @@ function updateVisitLogFromForm(visitLogId, form) {
     followUpNeeded: cleanText(formData.get("followUpNeeded")),
     followUpDueDate: cleanText(formData.get("followUpDueDate")),
     costCopay: cleanText(formData.get("costCopay")),
-  };
-
-  owningAppointment.visitHistory = normalizeVisitHistory(owningAppointment.visitHistory || []).map((log) =>
-    log.id === visitLogId ? nextLog : log
-  );
+    updatedAt: new Date().toISOString(),
+  });
   return true;
 }
 
@@ -1201,7 +1757,14 @@ function loadAppointmentIntoForm(appointmentId) {
 
   editingAppointmentId = appointment.id;
   appointmentForm.elements.appointmentId.value = appointment.id;
-  setSelectWithCustomValue(providerSelect, appointmentForm.elements.customDoctor, appointment.doctor || "");
+  const linkedProvider = (state.providers || []).find(
+    (provider) => normalizeLookupKey(provider.doctor) === normalizeLookupKey(appointment.doctor)
+  );
+  if (linkedProvider) {
+    providerSelect.value = `${PROVIDER_OPTION_PREFIX}${linkedProvider.id}`;
+  } else {
+    setSelectWithCustomValue(providerSelect, appointmentForm.elements.customDoctor, appointment.doctor || "");
+  }
   setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, appointment.specialty || "");
   appointmentForm.elements.clinic.value = appointment.clinic || extractClinicName(appointment.place) || "";
   appointmentForm.elements.place.value = appointment.place || "";
@@ -1224,9 +1787,10 @@ function loadAppointmentIntoForm(appointmentId) {
   appointmentForm.elements.notes.value = appointment.notes || "";
   appointmentFormTitle.textContent = "Edit appointment";
   appointmentCancelButton.classList.remove("is-hidden");
-  editingVisitHistory = normalizeVisitHistory(appointment.visitHistory || []);
+  editingVisitHistory = getVisitLogsForAppointment(appointment);
   syncCustomFieldVisibility();
   syncAppointmentPreview();
+  syncFollowUpShortcutButtons(appointmentForm, "next-visit");
 }
 
 function resetAppointmentForm() {
@@ -1245,6 +1809,11 @@ function resetAppointmentForm() {
   renderSelectOptions();
   syncCustomFieldVisibility();
   syncAppointmentPreview();
+  if (appointmentFollowUpHint) {
+    appointmentFollowUpHint.textContent = "";
+    appointmentFollowUpHint.classList.add("is-hidden");
+  }
+  syncFollowUpShortcutButtons(appointmentForm, "next-visit");
 }
 
 function syncForms() {
@@ -1274,9 +1843,11 @@ function syncForms() {
 
 function render() {
   const summaries = getAppointmentSummaries();
-  const reminderItems = summaries.filter((item) => item.reminderEnabled !== false && item.reminderStatus !== "ok");
+  const reminderItems = getActiveReminderItems(summaries);
   const recommendations = getProfileRecommendations();
-  const providerCount = new Set(state.appointments.map((item) => item.doctor)).size;
+  const providerCount = new Set(
+    getDisplayableAppointments().map((item) => item.doctor).concat(state.visitLogs.map((log) => log.provider))
+  ).size;
 
   if (heroReminderCount) heroReminderCount.textContent = String(reminderItems.length);
   if (heroProviderCount) heroProviderCount.textContent = String(providerCount);
@@ -1291,11 +1862,11 @@ function render() {
   renderRecommendations(recommendations);
   renderInsuranceSummary();
   renderCareTeam();
-  renderCareTeamActivity();
   renderAppointmentFilters();
   renderSelectOptions(false);
   renderVisitTimelineList(summaries);
   renderRecordView();
+  renderCarePlan();
   updateNotificationButton();
 }
 
@@ -1306,12 +1877,38 @@ function renderDashboardStats(summaries, reminderItems) {
   const nextItem = summaries[0];
 
   dashboardStats.innerHTML = [
-    metricCard("Tracked appointments", state.appointments.length),
+    metricCard("Tracked appointments", getDisplayableAppointments().length),
     metricCard("Reminder alerts", reminderItems.length),
     metricCard("Overdue", overdueCount),
     metricCard("Due soon", dueSoonCount),
     metricCard("Next visit", nextItem ? formatDate(nextItem.nextVisitDate) : "None"),
   ].join("");
+}
+
+function getActiveReminderItems(summaries) {
+  const appointmentReminders = summaries.filter((item) => item.reminderEnabled !== false && item.reminderStatus !== "ok");
+  const visitLogReminders = getVisitLogFollowUpReminders().filter((item) => item.reminderStatus !== "ok");
+  return appointmentReminders.concat(visitLogReminders);
+}
+
+function getVisitLogFollowUpReminders() {
+  return normalizeVisitLogs(state.visitLogs)
+    .filter((log) => isValidIsoDate(log.followUpDueDate) || hasFollowUpAlert(log))
+    .map((log) => {
+      const followUpState = isValidIsoDate(log.followUpDueDate) ? getFollowUpState(log.followUpDueDate) : "soon";
+      return {
+        id: `visit-log-followup-${log.id}`,
+        doctor: log.provider,
+        specialty: log.specialty,
+        reasonForVisit: log.reason,
+        nextVisitDate: log.followUpDueDate,
+        nextVisitLabel: "Follow-up due",
+        reminderStatus: followUpState,
+        reminderEnabled: true,
+        isVisitLogFollowUp: true,
+        followUpNeeded: log.followUpNeeded,
+      };
+    });
 }
 
 function renderReminderList(reminderItems) {
@@ -1324,15 +1921,24 @@ function renderReminderList(reminderItems) {
               <div class="card-head">
                 <div>
                   <strong>${escapeHtml(getRecordTitle(item))}</strong>
-                  <span class="meta">${escapeHtml(item.reasonForVisit || item.doctor || "No provider saved")}</span>
+                  <span class="meta">${escapeHtml(
+                    item.isVisitLogFollowUp
+                      ? item.followUpNeeded || item.reasonForVisit || "Visit log follow-up"
+                      : item.reasonForVisit || item.doctor || "No provider saved"
+                  )}</span>
                 </div>
                 ${statusPill(item.reminderStatus)}
               </div>
               <div class="detail-grid">
-                <span><strong>Last visit</strong>${formatDate(item.lastVisitDate)}</span>
-                <span><strong>${escapeHtml(item.nextVisitLabel || "Auto next visit")}</strong>${formatDate(item.nextVisitDate)}</span>
-                <span><strong>Reminder starts</strong>${formatDate(item.reminderStartDate)}</span>
-                <span><strong>Appointment</strong>${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
+                ${
+                  item.isVisitLogFollowUp
+                    ? `<span><strong>Follow-up due</strong>${formatFollowUpDueLabel(item.nextVisitDate)}</span>
+                       <span><strong>Reason</strong>${escapeHtml(item.reasonForVisit || "Not saved")}</span>`
+                    : `<span><strong>Last visit</strong>${formatDate(item.lastVisitDate)}</span>
+                       <span><strong>${escapeHtml(item.nextVisitLabel || "Auto next visit")}</strong>${formatDate(item.nextVisitDate)}</span>
+                       <span><strong>Reminder starts</strong>${formatDate(item.reminderStartDate)}</span>
+                       <span><strong>Appointment</strong>${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>`
+                }
               </div>
             </article>
           `
@@ -1490,14 +2096,19 @@ function renderHomeSections(summaries) {
   }
 
   const today = todayString();
-  const todayItems = summaries.filter(
-    (item) =>
-      item.appointmentDate === today || item.reminderStartDate === today || item.nextVisitDate === today
-  );
-  const overdueItems = summaries.filter((item) => item.reminderStatus === "overdue");
-  const upcomingItems = summaries.filter(
-    (item) => item.reminderStatus === "soon" && !todayItems.includes(item)
-  );
+  const visitLogFollowUps = getVisitLogFollowUpReminders();
+  const todayItems = summaries
+    .filter(
+      (item) =>
+        item.appointmentDate === today || item.reminderStartDate === today || item.nextVisitDate === today
+    )
+    .concat(visitLogFollowUps.filter((item) => item.nextVisitDate === today));
+  const overdueItems = summaries
+    .filter((item) => item.reminderStatus === "overdue")
+    .concat(visitLogFollowUps.filter((item) => item.reminderStatus === "overdue"));
+  const upcomingItems = summaries
+    .filter((item) => item.reminderStatus === "soon" && !todayItems.includes(item))
+    .concat(visitLogFollowUps.filter((item) => item.reminderStatus === "soon" && item.nextVisitDate !== today));
   const recentLogs = getAllVisitHistoryEntries()
     .slice()
     .sort((a, b) => compareOptionalDates(b.date, a.date))
@@ -1525,21 +2136,31 @@ function renderHomeSections(summaries) {
 }
 
 function renderHomeSummaryCard(item) {
+  const metaLine = item.isVisitLogFollowUp
+    ? `Follow-up due ${formatFollowUpCardDate(item.nextVisitDate) || "Not set"}`
+    : `${formatDate(item.nextVisitDate)} • ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}`;
+  const reasonLine = item.isVisitLogFollowUp
+    ? item.followUpNeeded || item.reasonForVisit || "Visit log follow-up"
+    : item.reasonForVisit || item.appointmentStatus || "No reason saved";
+
   return `
     <article class="summary-card">
       <div class="card-head">
         <div>
           <strong>${escapeHtml(getRecordTitle(item))}</strong>
-          <span class="meta">${escapeHtml(item.reasonForVisit || item.appointmentStatus || "No reason saved")}</span>
-          <span class="meta">${formatDate(item.nextVisitDate)} • ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
+          <span class="meta">${escapeHtml(reasonLine)}</span>
+          <span class="meta">${escapeHtml(metaLine)}</span>
         </div>
-        ${statusPill(item)}
+        ${statusPill(item.reminderStatus || item)}
       </div>
     </article>
   `;
 }
 
 function renderHomeVisitLogCard(entry) {
+  const followUpLine = isValidIsoDate(entry.followUpDueDate)
+    ? `<span class="meta">Follow-up due: ${formatFollowUpCardDate(entry.followUpDueDate)}</span>`
+    : "";
   return `
     <article class="summary-card">
       <div class="card-head">
@@ -1547,6 +2168,7 @@ function renderHomeVisitLogCard(entry) {
           <strong>${escapeHtml(getRecordTitle(entry))}</strong>
           <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
           <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
+          ${followUpLine}
         </div>
         ${statusPill(entry)}
       </div>
@@ -1740,79 +2362,73 @@ function getRecordOverdueRank(record) {
 }
 
 function renderAppointmentRecordCard(item) {
+  const dateLabel = item.appointmentDate
+    ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)
+    : formatDate(item.nextVisitDate);
   return `
-    <details class="appointment-card appointment-dropdown">
-      <summary class="appointment-summary">
-        ${
-          visitHistorySelectMode
-            ? `<label class="select-check">
-                <input type="checkbox" data-select-record="${item.id}" ${selectedRecordIds.has(item.id) ? "checked" : ""} />
-                Select
-              </label>`
-            : ""
-        }
-        <div>
-          <span class="pill ok">Appointment</span>
-          <strong>${escapeHtml(getRecordTitle(item))}</strong>
-          <span class="meta">${escapeHtml(item.reasonForVisit || "No reason saved")}</span>
-          <span class="meta">Clinic: ${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
-          <span class="meta">Status: ${escapeHtml(item.appointmentStatus || "Planned")} • Next: ${formatDate(item.nextVisitDate)} • Appointment: ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
-        </div>
-        ${statusPill(item.reminderStatus)}
-      </summary>
-      <div class="appointment-dropdown-body">
-        <div class="detail-grid">
-          <span><strong>Appointment</strong>${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
+    <article class="visit-record-card">
+      ${
+        visitHistorySelectMode
+          ? `<label class="select-check">
+              <input type="checkbox" data-select-record="${item.id}" ${selectedRecordIds.has(item.id) ? "checked" : ""} />
+              Select
+            </label>`
+          : ""
+      }
+      <div class="visit-card-head">
+        <span class="pill scheduled">Appointment</span>
+        ${statusPill(item)}
+      </div>
+      <div class="visit-card-body">
+        <strong class="visit-card-provider">${escapeHtml(item.doctor || "Unknown provider")}</strong>
+        <span class="visit-card-specialty">${escapeHtml(item.specialty || "No specialty saved")}</span>
+        <div class="visit-card-grid">
+          <span><strong>Date</strong>${escapeHtml(dateLabel || "Not set")}</span>
           <span><strong>Status</strong>${escapeHtml(item.appointmentStatus || "Planned")}</span>
-          <span><strong>Clinic</strong>${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
-          <span><strong>Address</strong>${escapeHtml(item.place || "Not saved")}</span>
-          <span><strong>Last visit</strong>${formatDate(item.lastVisitDate)}</span>
-          <span><strong>${escapeHtml(item.nextVisitLabel || "Auto next visit")}</strong>${formatDate(item.nextVisitDate)}</span>
-          <span><strong>Reason</strong>${escapeHtml(item.reasonForVisit || "Not saved")}</span>
-          <span><strong>Notifications</strong>${item.reminderEnabled === false ? "Disabled" : "Enabled"}</span>
-        </div>
-        <div class="inline-row">
-          <button class="button-secondary" type="button" data-edit-appointment="${item.id}">Edit Appointment</button>
-          <button class="button-danger" type="button" data-delete-appointment="${item.id}">Delete</button>
+          <span class="full-span"><strong>Reason</strong>${escapeHtml(item.reasonForVisit || "Not saved")}</span>
         </div>
       </div>
-    </details>
+      <div class="visit-card-actions">
+        <button class="button-secondary" type="button" data-edit-appointment="${item.id}">Edit</button>
+        <button class="button-delete" type="button" data-delete-appointment="${item.id}">Delete</button>
+      </div>
+    </article>
   `;
 }
 
 function renderVisitLogRecordCard(entry) {
   return `
-    <article class="summary-card" data-appointment-log-id="${entry.appointmentId}" data-visit-log-card="${entry.id}">
-      <div class="card-head">
-        ${
-          visitHistorySelectMode
-            ? `<label class="select-check">
-                <input type="checkbox" data-select-record="${entry.id}" ${selectedRecordIds.has(entry.id) ? "checked" : ""} />
-                Select
-              </label>`
-            : ""
-        }
-        <div>
-          <span class="pill ok">Visit Log</span>
-          <strong>${escapeHtml(getRecordTitle(entry))}</strong>
-          <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
-          <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
-        </div>
-        <div class="inline-row">
-          <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
-          <button class="button-secondary" type="button" data-edit-visit-log="${entry.id}" data-appointment-id="${entry.appointmentId}">Edit</button>
-          <button class="button-danger" type="button" data-delete-visit-log="${entry.id}">Delete</button>
-          <button class="button-danger" type="button" data-delete-provider-visit-logs="${entry.id}">Delete Provider Logs</button>
+    <article class="visit-record-card" data-appointment-log-id="${entry.appointmentId}" data-visit-log-card="${entry.id}">
+      ${
+        visitHistorySelectMode
+          ? `<label class="select-check">
+              <input type="checkbox" data-select-record="${entry.id}" ${selectedRecordIds.has(entry.id) ? "checked" : ""} />
+              Select
+            </label>`
+          : ""
+      }
+      <div class="visit-card-head">
+        <span class="pill ok">Visit Log</span>
+        <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
+      </div>
+      <div class="visit-card-body">
+        <strong class="visit-card-provider">${escapeHtml(entry.provider || "Unknown provider")}</strong>
+        <span class="visit-card-specialty">${escapeHtml(entry.specialty || "No specialty saved")}</span>
+        <div class="visit-card-grid">
+          <span><strong>Date</strong>${formatDate(entry.date)}</span>
+          <span><strong>Status</strong>${escapeHtml(entry.status || "Completed")}</span>
+          <span class="full-span"><strong>Reason</strong>${escapeHtml(entry.reason || "Not saved")}</span>
+          ${
+            isValidIsoDate(entry.followUpDueDate)
+              ? `<span class="full-span meta-line"><strong>Follow-up due:</strong> ${formatFollowUpCardDate(entry.followUpDueDate)}</span>`
+              : ""
+          }
         </div>
       </div>
-      <div class="detail-grid">
-        <span><strong>Summary</strong>${escapeHtml(entry.summary || "Not saved")}</span>
-        <span><strong>Results</strong>${escapeHtml(entry.results || "Not saved")}</span>
-        <span><strong>Follow-up needed</strong>${escapeHtml(entry.followUpNeeded || "Not saved")}</span>
-        <span><strong>Follow-up due</strong>${formatFollowUpDueLabel(entry.followUpDueDate)}</span>
-        <span><strong>Cost / copay</strong>${escapeHtml(entry.costCopay || "Not saved")}</span>
+      <div class="visit-card-actions">
+        <button class="button-secondary" type="button" data-edit-visit-log="${entry.id}" data-appointment-id="${entry.appointmentId}">Edit</button>
+        <button class="button-delete" type="button" data-delete-visit-log="${entry.id}">Delete</button>
       </div>
-      ${inlineEditingVisitLogId === entry.id ? renderInlineVisitLogEditor(entry) : ""}
     </article>
   `;
 }
@@ -1839,67 +2455,32 @@ function renderInsuranceSummary() {
 
 function renderCareTeam() {
   if (!careTeamList) return;
-  console.log('Rendering providers from state.providers:', state.providers);
-  const providers = state.providers || [];
+  const providers = getAllProviders();
   careTeamList.innerHTML = providers.length
-    ? providers
-        .map(
-          (provider) => `
-            <details class="appointment-card appointment-dropdown">
-              <summary class="appointment-summary">
-                <div>
-                  <strong>${escapeHtml(provider.doctor)}</strong>
-                  <span class="meta">${escapeHtml(provider.specialty || "General")}</span>
-                  <span class="meta">${escapeHtml(provider.clinic || provider.address || "No clinic details saved")}</span>
-                </div>
-              </summary>
-              <div class="appointment-dropdown-body">
-                <div class="detail-grid">
-                  <span><strong>Clinic</strong>${escapeHtml(provider.clinic || "Not saved")}</span>
-                  <span><strong>Phone</strong>${escapeHtml(provider.phone || "Not saved")}</span>
-                  <span><strong>Address</strong>${escapeHtml(provider.address || "Not saved")}</span>
-                  <span><strong>Insurance accepted</strong>${escapeHtml(provider.insuranceAccepted || "Not saved")}</span>
-                  <span><strong>Portal link</strong>${provider.portalLink ? `<a class="source-link" href="${escapeHtml(provider.portalLink)}" target="_blank" rel="noreferrer">Open portal</a>` : "Not saved"}</span>
-                </div>
-                <div class="inline-row">
-                  <button class="button-secondary" type="button" data-edit-provider="${escapeHtml(provider.key)}">Edit Provider</button>
-                  <button class="button-danger" type="button" data-delete-provider="${escapeHtml(provider.key)}">Delete Provider</button>
-                </div>
-              </div>
-            </details>
-          `
-        )
-        .join("")
+    ? providers.map((provider) => renderCareTeamProviderCard(provider)).join("")
     : `<p class="muted">No care team entries yet. Add a provider using the form above.</p>`;
 }
 
-function renderCareTeamActivity() {
-  if (!careTeamActivityList) return;
-  const entries = getAllVisitHistoryEntries();
-  careTeamActivityList.innerHTML = entries.length
-    ? entries
-        .map(
-          (entry) => `
-            <article class="summary-card">
-              <div class="card-head">
-                <div>
-                  <strong>${escapeHtml(getRecordTitle(entry))}</strong>
-                  <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
-                  <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.specialty || entry.provider || "Visit")}</span>
-                </div>
-                <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
-              </div>
-              <div class="detail-grid">
-                <span><strong>Summary</strong>${escapeHtml(entry.summary || "Not saved")}</span>
-                <span><strong>Results</strong>${escapeHtml(entry.results || "Not saved")}</span>
-                <span><strong>Follow-up due</strong>${formatFollowUpDueLabel(entry.followUpDueDate)}</span>
-                <span><strong>Cost / copay</strong>${escapeHtml(entry.costCopay || "Not saved")}</span>
-              </div>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="muted">No provider activity yet. Add a visit log to start building history.</p>`;
+function renderCareTeamProviderCard(provider) {
+  const notes = provider.notes || provider.address || provider.insuranceAccepted || "No notes saved";
+  return `
+    <article class="visit-record-card care-team-provider-card" data-provider-card="${escapeHtml(provider.id)}">
+      <div class="visit-card-body">
+        <strong class="visit-card-provider">${escapeHtml(getProviderRecordName(provider))}</strong>
+        <span class="visit-card-specialty">${escapeHtml(provider.specialty || "General")}</span>
+        <div class="visit-card-grid">
+          <span><strong>Clinic</strong>${escapeHtml(provider.clinic || "Not saved")}</span>
+          <span><strong>Phone</strong>${escapeHtml(provider.phone || "Not saved")}</span>
+          <span class="full-span"><strong>Notes</strong>${escapeHtml(notes)}</span>
+        </div>
+      </div>
+      <div class="visit-card-actions">
+        <button class="button-secondary" type="button" data-edit-provider="${escapeHtml(provider.id)}">Edit</button>
+        <button class="button-delete" type="button" data-delete-provider="${escapeHtml(provider.id)}">Delete</button>
+        <button class="button-secondary" type="button" data-delete-provider-logs="${escapeHtml(provider.id)}">Delete Provider Logs</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderRecommendations(recommendations) {
@@ -2084,7 +2665,10 @@ function renderInlineVisitLogEditor(entry) {
 }
 
 function filterVisitHistoryEntries(entries) {
-  const selectedAppointment = state.appointments.find((item) => item.id === cleanText(visitLogProviderSelect.value));
+  const context = getVisitLogProviderContext(cleanText(visitLogProviderSelect.value));
+  const selectedAppointment = context?.linkedAppointmentId
+    ? state.appointments.find((item) => item.id === context.linkedAppointmentId)
+    : null;
   const selectedProviderKey = selectedAppointment ? normalizeLookupKey(selectedAppointment.doctor) : "";
 
   return entries.filter((entry) => {
@@ -2152,6 +2736,8 @@ function deleteRecordsByIds(idsToDelete) {
     return;
   }
 
+  state.visitLogs = state.visitLogs.filter((log) => !deleteIds.has(log.id));
+
   state.appointments.forEach((appointment) => {
     appointment.visitHistory = normalizeVisitHistory(appointment.visitHistory || []).filter(
       (log) => !deleteIds.has(log.id)
@@ -2183,8 +2769,7 @@ function openProviderVisitLogsInRecords(appointmentId) {
     return;
   }
 
-  switchScreen("appointments");
-  setSubtab("appointments", "records");
+  showVisitsList();
   recordTypeFilter.value = "visit-logs";
   appointmentSearchInput.value = appointment.doctor || appointment.specialty || "";
   render();
@@ -2203,20 +2788,23 @@ function scrollVisitLogIntoView(visitLogId) {
 }
 
 function getAllVisitHistoryEntries() {
-  return state.appointments
-    .flatMap((appointment) =>
-      normalizeVisitHistory(appointment.visitHistory || []).map((log) => ({
+  return normalizeVisitLogs(state.visitLogs)
+    .map((log) => {
+      const linkedAppointment = log.linkedAppointmentId
+        ? state.appointments.find((appointment) => appointment.id === log.linkedAppointmentId)
+        : null;
+      return {
         ...log,
-        appointmentId: appointment.id,
-        appointmentTitle: appointment.title,
-        provider: cleanText(log.provider) || appointment.doctor,
-        specialty: cleanText(log.specialty) || appointment.specialty,
-        clinic: cleanText(log.clinic) || appointment.clinic || extractClinicName(appointment.place),
-        phone: cleanText(log.phone) || appointment.contactPhone,
-        portalLink: cleanText(log.portalLink) || appointment.portalLink,
-        insuranceAccepted: cleanText(log.insuranceAccepted) || appointment.insuranceAccepted,
-      }))
-    )
+        appointmentId: log.linkedAppointmentId || "",
+        appointmentTitle: linkedAppointment?.title || "",
+        provider: cleanText(log.provider) || linkedAppointment?.doctor || "",
+        specialty: cleanText(log.specialty) || linkedAppointment?.specialty || "",
+        clinic: cleanText(log.clinic) || linkedAppointment?.clinic || extractClinicName(linkedAppointment?.place) || "",
+        phone: cleanText(log.phone) || linkedAppointment?.contactPhone || "",
+        portalLink: cleanText(log.portalLink) || linkedAppointment?.portalLink || "",
+        insuranceAccepted: cleanText(log.insuranceAccepted) || linkedAppointment?.insuranceAccepted || "",
+      };
+    })
     .sort((a, b) => compareOptionalDates(b.date, a.date));
 }
 
@@ -2229,7 +2817,7 @@ function prefillVisitLogForm(appointmentId) {
 
   resetVisitLogForm();
   visitLogForm.elements.visitLogAppointmentId.value = appointment.id;
-  visitLogProviderSelect.value = appointment.id;
+  visitLogProviderSelect.value = getVisitLogSelectValueForAppointment(appointment.id);
   visitLogForm.elements.clinic.value = appointment.clinic || "";
   setSelectWithCustomValue(
     visitLogSpecialtySelect,
@@ -2241,15 +2829,22 @@ function prefillVisitLogForm(appointmentId) {
 }
 
 function loadVisitLogIntoEditor(visitLogId) {
-  const entry = getAllVisitHistoryEntries().find((item) => item.id === visitLogId);
-  const log = entry || null;
+  const storedLog = state.visitLogs.find((item) => item.id === visitLogId);
+  const entry = storedLog ? getAllVisitHistoryEntries().find((item) => item.id === visitLogId) : null;
+  const log = entry || storedLog || null;
   if (!log) {
     return;
   }
 
   editingVisitLogId = log.id;
-  visitLogForm.elements.visitLogAppointmentId.value = log.appointmentId || "";
-  visitLogProviderSelect.value = log.appointmentId || "";
+  visitLogForm.elements.visitLogAppointmentId.value = log.linkedAppointmentId || log.appointmentId || "";
+  if (log.providerId) {
+    visitLogProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${log.providerId}`;
+  } else if (log.linkedAppointmentId || log.appointmentId) {
+    visitLogProviderSelect.value = getVisitLogSelectValueForAppointment(log.linkedAppointmentId || log.appointmentId);
+  } else {
+    visitLogProviderSelect.value = "";
+  }
   visitLogForm.elements.visitLogId.value = log.id || "";
   visitLogForm.elements.clinic.value = log.clinic || "";
   setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, log.specialty || "");
@@ -2265,6 +2860,7 @@ function loadVisitLogIntoEditor(visitLogId) {
   visitLogCancelButton.classList.remove("is-hidden");
   visitLogFormTitle.textContent = "Edit visit log";
   syncVisitLogCustomSpecialtyVisibility();
+  syncFollowUpShortcutButtons(visitLogForm, "follow-up");
 }
 
 function resetVisitLogForm() {
@@ -2277,37 +2873,54 @@ function resetVisitLogForm() {
   visitLogCancelButton.classList.add("is-hidden");
   visitLogFormTitle.textContent = "Add visit log";
   syncVisitLogCustomSpecialtyVisibility();
+  if (visitLogFollowUpHint) {
+    visitLogFollowUpHint.textContent = "";
+    visitLogFollowUpHint.classList.add("is-hidden");
+  }
+  syncFollowUpShortcutButtons(visitLogForm, "follow-up");
 }
 
 function syncVisitLogProviderSelection() {
-  const appointmentId = cleanText(visitLogProviderSelect.value);
-  visitLogForm.elements.visitLogAppointmentId.value = appointmentId;
-  const appointment = state.appointments.find((item) => item.id === appointmentId);
-  if (!appointment) {
+  const selection = cleanText(visitLogProviderSelect.value);
+  if (selection === NEW_PROVIDER_OPTION) {
+    visitLogProviderSelect.value = "";
+    openCareTeamForNewProvider("visitLog");
     return;
   }
 
+  const context = getVisitLogProviderContext(selection);
+  if (!context) {
+    visitLogForm.elements.visitLogAppointmentId.value = "";
+    return;
+  }
+
+  visitLogForm.elements.visitLogAppointmentId.value = context.linkedAppointmentId || "";
+
   if (!editingVisitLogId) {
-    visitLogForm.elements.clinic.value = appointment.clinic || "";
+    visitLogForm.elements.clinic.value = context.clinic || "";
     setSelectWithCustomValue(
       visitLogSpecialtySelect,
       visitLogForm.elements.customSpecialty,
-      appointment.specialty || ""
+      context.specialty || ""
     );
-    visitLogForm.elements.reason.value = visitLogForm.elements.reason.value || appointment.reasonForVisit || "";
+    visitLogForm.elements.reason.value = visitLogForm.elements.reason.value || "";
   }
   renderVisitHistoryGlobalList();
-  renderVisitLogProviderInfo(appointment);
+  renderVisitLogProviderInfo(context);
   syncVisitLogCustomSpecialtyVisibility();
 }
 
-function renderVisitLogProviderInfo(appointment) {
-  const lastLog = normalizeVisitHistory(appointment.visitHistory || []).find((log) => isValidIsoDate(log.date));
+function renderVisitLogProviderInfo(context) {
+  const providerName = context.provider || "this provider";
+  const lastLog = state.visitLogs
+    .filter((log) => normalizeLookupKey(log.provider) === normalizeLookupKey(providerName))
+    .sort((a, b) => compareOptionalDates(b.date, a.date))
+    .find((log) => isValidIsoDate(log.date));
   if (lastLog?.date) {
-    visitLogLastAppointmentInfo.textContent = `Last tracked visit with ${appointment.doctor} was ${formatDate(lastLog.date)}${lastLog.reason ? ` (${lastLog.reason})` : ""}.`;
+    visitLogLastAppointmentInfo.textContent = `Last tracked visit with ${providerName} was ${formatDate(lastLog.date)}${lastLog.reason ? ` (${lastLog.reason})` : ""}.`;
     return;
   }
-  visitLogLastAppointmentInfo.textContent = `Auto-fill clinic, specialty, and reason from ${appointment.doctor}.`;
+  visitLogLastAppointmentInfo.textContent = `Auto-fill clinic, specialty, and reason from ${providerName}.`;
 }
 
 function handleVisitLogTemplateChange() {
@@ -2337,6 +2950,7 @@ function applyVisitLogTemplate(templateKey) {
   const dateValue = cleanText(visitLogForm.elements.date.value);
   if (dateValue && template.followUpDueMonths && !cleanText(visitLogForm.elements.followUpDueDate.value)) {
     visitLogForm.elements.followUpDueDate.value = addMonths(dateValue, template.followUpDueMonths);
+    syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   }
 }
 
@@ -2376,10 +2990,10 @@ function applyVisitLogPreset(presetKey) {
 }
 
 function resetVisitLogFormExceptProvider() {
-  const appointmentId = cleanText(visitLogProviderSelect.value) || cleanText(visitLogForm.elements.visitLogAppointmentId.value);
   const providerValue = visitLogProviderSelect.value;
+  const context = getVisitLogProviderContext(providerValue);
   visitLogForm.reset();
-  visitLogForm.elements.visitLogAppointmentId.value = appointmentId;
+  visitLogForm.elements.visitLogAppointmentId.value = context?.linkedAppointmentId || "";
   visitLogProviderSelect.value = providerValue;
   visitLogForm.elements.visitLogId.value = "";
   visitLogForm.elements.date.value = "";
@@ -2394,36 +3008,39 @@ function resetVisitLogFormExceptProvider() {
   visitLogFormTitle.textContent = "Add visit log";
   visitLogCancelButton.classList.add("is-hidden");
   visitLogForm.elements.summary.placeholder = "What happened at the visit?";
+  if (visitLogFollowUpHint) {
+    visitLogFollowUpHint.textContent = "";
+    visitLogFollowUpHint.classList.add("is-hidden");
+  }
+  syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogProviderSelection();
 }
 
 function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
   const formData = new FormData(visitLogForm);
-  const appointmentId = cleanText(formData.get("visitLogAppointmentId"));
-  if (!appointmentId) {
-    visitHistoryGlobalList.innerHTML = `<p class="muted">Choose or create an appointment first.</p>`;
-    return false;
-  }
-
-  const appointment = state.appointments.find((item) => item.id === appointmentId);
-  if (!appointment) {
-    visitHistoryGlobalList.innerHTML = `<p class="muted">Choose or create an appointment first.</p>`;
+  const selection = cleanText(visitLogProviderSelect.value) || cleanText(formData.get("visitLogAppointmentId"));
+  const context = getVisitLogProviderContext(selection);
+  if (!context?.provider) {
+    visitHistoryGlobalList.innerHTML = `<p class="muted">Choose a provider to log this visit.</p>`;
     return false;
   }
 
   const specialtyValue =
     cleanText(formData.get("specialty")) === "__custom__"
       ? cleanText(formData.get("customSpecialty"))
-      : cleanText(formData.get("specialty")) || appointment.specialty;
-  const nextLog = {
-    id: cleanText(formData.get("visitLogId")) || crypto.randomUUID(),
+      : cleanText(formData.get("specialty")) || context.specialty;
+  const logId = cleanText(formData.get("visitLogId")) || crypto.randomUUID();
+  const nextLog = normalizeVisitLog({
+    id: logId,
+    providerId: context.providerId,
+    linkedAppointmentId: context.linkedAppointmentId,
     date: cleanText(formData.get("date")),
-    provider: appointment.doctor,
-    clinic: cleanText(formData.get("clinic")) || appointment.clinic || extractClinicName(appointment.place),
-    phone: appointment.contactPhone,
-    portalLink: appointment.portalLink,
-    insuranceAccepted: appointment.insuranceAccepted,
-    specialty: specialtyValue || appointment.specialty,
+    provider: context.provider,
+    clinic: cleanText(formData.get("clinic")) || context.clinic,
+    phone: context.phone,
+    portalLink: context.portalLink,
+    insuranceAccepted: context.insuranceAccepted,
+    specialty: specialtyValue || context.specialty,
     reason: cleanText(formData.get("reason")),
     status: cleanText(formData.get("status")) || "Completed",
     summary: cleanText(formData.get("summary")),
@@ -2431,7 +3048,7 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     followUpNeeded: cleanText(formData.get("followUpNeeded")),
     followUpDueDate: cleanText(formData.get("followUpDueDate")),
     costCopay: cleanText(formData.get("costCopay")),
-  };
+  });
 
   if (scheduleFollowUp && !isValidIsoDate(nextLog.followUpDueDate)) {
     visitLogForm.elements.followUpDueDate.setCustomValidity("Add a follow-up due date before scheduling.");
@@ -2440,30 +3057,34 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     return false;
   }
 
-  const currentHistory = normalizeVisitHistory(appointment.visitHistory || []);
-  appointment.visitHistory = normalizeVisitHistory(
-    cleanText(formData.get("visitLogId"))
-      ? currentHistory.map((item) => (item.id === cleanText(formData.get("visitLogId")) ? nextLog : item))
-      : [nextLog, ...currentHistory]
-  );
-
-  if (appointment.appointmentStatus !== "Cancelled" && ["Planned", "Scheduled"].includes(appointment.appointmentStatus)) {
-    appointment.appointmentStatus = "Completed";
+  const existingIndex = state.visitLogs.findIndex((log) => log.id === logId);
+  const isNewVisitLog = existingIndex < 0;
+  if (existingIndex >= 0) {
+    state.visitLogs[existingIndex] = {
+      ...state.visitLogs[existingIndex],
+      ...nextLog,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    state.visitLogs.unshift({
+      ...nextLog,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   }
 
-  if (scheduleFollowUp) {
-    appointment.nextRecommendedVisit = nextLog.followUpDueDate;
-    appointment.reminderEnabled = appointment.reminderEnabled !== false;
-    appointment.updatedAt = new Date().toISOString();
+  const carePlanItemId = pendingCarePlanItemId;
+  if (carePlanItemId && isNewVisitLog) {
+    applyCarePlanVisitLogCompletion(carePlanItemId, nextLog.date);
   }
 
   persist();
   if (addAnother) {
     resetVisitLogFormExceptProvider();
   } else {
+    pendingCarePlanItemId = "";
     resetVisitLogForm();
-    switchScreen("appointments");
-    setSubtab("appointments", "records");
+    showVisitsList();
   }
   render();
   return true;
@@ -2506,6 +3127,155 @@ function hasFollowUpAlert(log) {
   );
 }
 
+function formatFollowUpCardDate(dateValue) {
+  if (!isValidIsoDate(dateValue)) {
+    return "";
+  }
+  const date = new Date(`${dateValue}T12:00:00`);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function getFollowUpAnchorDate(visitDateInput, { requireVisitDate = false } = {}) {
+  const visitDate = cleanText(visitDateInput?.value);
+  if (isValidIsoDate(visitDate)) {
+    return { date: visitDate, missingVisitDate: false };
+  }
+  if (requireVisitDate) {
+    return { date: "", missingVisitDate: true };
+  }
+  return { date: todayString(), missingVisitDate: true };
+}
+
+function syncFollowUpShortcutButtons(form, mode = "follow-up") {
+  if (!form) {
+    return;
+  }
+  const attr = mode === "next-visit" ? "data-next-visit-preset" : "data-follow-up-preset";
+  const dueDateInput = mode === "next-visit" ? form.elements.nextRecommendedVisit : form.elements.followUpDueDate;
+  if (!dueDateInput) {
+    return;
+  }
+
+  const dueDate = cleanText(dueDateInput.value);
+  const buttons = [...form.querySelectorAll(`[${attr}]`)];
+  buttons.forEach((button) => button.classList.remove("is-active"));
+
+  if (!isValidIsoDate(dueDate)) {
+    const noneButton = buttons.find((button) => button.getAttribute(attr) === "none");
+    if (noneButton) {
+      noneButton.classList.add("is-active");
+    }
+    return;
+  }
+
+  const visitDateInput = mode === "next-visit" ? form.elements.appointmentDate : form.elements.date;
+  const anchor = getFollowUpAnchorDate(visitDateInput);
+  const sixMonthDate = anchor.date ? addMonths(anchor.date, 6) : "";
+  const oneYearDate = anchor.date ? addMonths(anchor.date, 12) : "";
+
+  if (dueDate === sixMonthDate) {
+    buttons.find((button) => button.getAttribute(attr) === "6months")?.classList.add("is-active");
+  } else if (dueDate === oneYearDate) {
+    buttons.find((button) => button.getAttribute(attr) === "1year")?.classList.add("is-active");
+  } else {
+    buttons.find((button) => button.getAttribute(attr) === "custom")?.classList.add("is-active");
+  }
+}
+
+function applyFollowUpPreset({
+  form,
+  preset,
+  mode = "follow-up",
+  hintElement = null,
+  requireVisitDate = false,
+}) {
+  if (!form) {
+    return;
+  }
+
+  const attr = mode === "next-visit" ? "data-next-visit-preset" : "data-follow-up-preset";
+  const dueDateInput = mode === "next-visit" ? form.elements.nextRecommendedVisit : form.elements.followUpDueDate;
+  const visitDateInput = mode === "next-visit" ? form.elements.appointmentDate : form.elements.date;
+  const buttons = [...form.querySelectorAll(`[${attr}]`)];
+
+  buttons.forEach((button) => {
+    button.classList.toggle("is-active", button.getAttribute(attr) === preset);
+  });
+
+  if (preset === "none") {
+    if (dueDateInput) {
+      dueDateInput.value = "";
+    }
+    if (hintElement) {
+      hintElement.textContent = "";
+      hintElement.classList.add("is-hidden");
+    }
+    return;
+  }
+
+  const anchor = getFollowUpAnchorDate(visitDateInput, { requireVisitDate });
+  if (!anchor.date) {
+    if (hintElement) {
+      hintElement.textContent = "Add visit date first.";
+      hintElement.classList.remove("is-hidden");
+    }
+    return;
+  }
+
+  if (hintElement) {
+    if (anchor.missingVisitDate) {
+      hintElement.textContent = "No visit date entered — using today as the start date.";
+      hintElement.classList.remove("is-hidden");
+    } else {
+      hintElement.textContent = "";
+      hintElement.classList.add("is-hidden");
+    }
+  }
+
+  if (preset === "6months" && dueDateInput) {
+    dueDateInput.value = addMonths(anchor.date, 6);
+  } else if (preset === "1year" && dueDateInput) {
+    dueDateInput.value = addMonths(anchor.date, 12);
+  } else if (preset === "custom" && dueDateInput) {
+    dueDateInput.focus();
+  }
+}
+
+function handleVisitLogFollowUpShortcutClick(event) {
+  const button = event.target.closest("[data-follow-up-preset]");
+  if (!button || !visitLogForm) {
+    return;
+  }
+  event.preventDefault();
+  applyFollowUpPreset({
+    form: visitLogForm,
+    preset: button.dataset.followUpPreset,
+    mode: "follow-up",
+    hintElement: visitLogFollowUpHint,
+    requireVisitDate: false,
+  });
+}
+
+function handleAppointmentFollowUpShortcutClick(event) {
+  const button = event.target.closest("[data-next-visit-preset]");
+  if (!button || !appointmentForm) {
+    return;
+  }
+  event.preventDefault();
+  applyFollowUpPreset({
+    form: appointmentForm,
+    preset: button.dataset.nextVisitPreset,
+    mode: "next-visit",
+    hintElement: appointmentFollowUpHint,
+    requireVisitDate: false,
+  });
+  syncAppointmentPreview();
+}
+
 function formatFollowUpDueLabel(dateValue) {
   const followUpState = getFollowUpState(dateValue);
   if (!isValidIsoDate(dateValue)) {
@@ -2521,7 +3291,7 @@ function formatFollowUpDueLabel(dateValue) {
 }
 
 function getAppointmentSummaries() {
-  return state.appointments
+  return getDisplayableAppointments()
     .map((appointment) => buildAppointmentSummary(appointment))
     .filter(Boolean)
     .sort((a, b) => compareOptionalDates(a.nextVisitDate, b.nextVisitDate));
@@ -2562,7 +3332,7 @@ function getProfileRecommendations() {
 }
 
 function buildAppointmentSummary(appointment) {
-  const normalizedHistory = normalizeVisitHistory(appointment.visitHistory || []).map((log) => ({
+  const normalizedHistory = getVisitLogsForAppointment(appointment).map((log) => ({
     ...log,
     provider: log.provider || appointment.doctor,
     specialty: log.specialty || appointment.specialty,
@@ -2660,7 +3430,7 @@ function maybeSendBrowserNotifications() {
     return;
   }
 
-  const reminderItems = getAppointmentSummaries().filter((item) => item.reminderEnabled !== false && item.reminderStatus !== "ok");
+  const reminderItems = getActiveReminderItems(getAppointmentSummaries());
   if (!reminderItems.length) {
     return;
   }
@@ -2695,8 +3465,15 @@ function updateNotificationButton() {
 }
 
 function switchScreen(target) {
+  const previousScreen = screens.find((screen) => screen.classList.contains("is-active"))?.dataset.screen;
   screens.forEach((screen) => screen.classList.toggle("is-active", screen.dataset.screen === target));
   screenButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.screenTarget === target));
+  if (target === "appointments" && previousScreen !== "appointments") {
+    showVisitsList();
+  }
+  if (target === "care-plan" && previousScreen !== "care-plan") {
+    showCarePlanList();
+  }
 }
 
 function metricCard(label, value) {
@@ -2771,19 +3548,27 @@ function loadState() {
 function getEmptyState() {
   return {
     appointments: [],
+    visitLogs: [],
+    carePlan: [],
     providers: [],
     insurance: {},
     profile: {},
     deletedSeedKeys: [],
+    deletedCarePlanSeedKeys: [],
     lastNotificationDate: "",
   };
 }
 
 function normalizeState(saved) {
   const emptyState = getEmptyState();
+  const normalizedAppointments = normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []);
+  const normalizedVisitLogs = normalizeVisitLogs(Array.isArray(saved?.visitLogs) ? saved.visitLogs : []);
+  const migrated = migrateVisitLogsAndCleanupAppointments(normalizedAppointments, normalizedVisitLogs);
+
   return {
     ...emptyState,
-    appointments: normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []),
+    appointments: migrated.appointments,
+    visitLogs: migrated.visitLogs,
     providers: Array.isArray(saved?.providers)
       ? saved.providers.map(normalizeProvider).filter(Boolean)
       : [],
@@ -2792,26 +3577,45 @@ function normalizeState(saved) {
     deletedSeedKeys: Array.isArray(saved?.deletedSeedKeys)
       ? saved.deletedSeedKeys.map((item) => cleanText(item)).filter(Boolean)
       : [],
+    carePlan: Array.isArray(saved?.carePlan)
+      ? saved.carePlan
+          .map((item) =>
+            normalizeCarePlanItem(
+              item,
+              Array.isArray(saved?.providers) ? saved.providers.map(normalizeProvider).filter(Boolean) : []
+            )
+          )
+          .filter(Boolean)
+      : [],
+    deletedCarePlanSeedKeys: Array.isArray(saved?.deletedCarePlanSeedKeys)
+      ? saved.deletedCarePlanSeedKeys.map((item) => cleanText(item)).filter(Boolean)
+      : [],
     lastNotificationDate: cleanText(saved?.lastNotificationDate),
   };
 }
 
 function normalizeProvider(provider) {
-  const doctor = cleanText(provider.doctor);
-  const specialty = cleanText(provider.specialty) || "General";
-  const clinic = cleanText(provider.clinic);
-  if (!doctor && !clinic) return null;
+  const name = getProviderRecordName(provider);
+  const specialty = cleanText(provider?.specialty);
+  const clinic = cleanText(provider?.clinic) || cleanText(provider?.place);
+  if (!name) {
+    return null;
+  }
+
+  const specialtyKey = specialty || "General";
 
   return {
     id: cleanText(provider.id) || crypto.randomUUID(),
-    key: cleanText(provider.key) || normalizeLookupKey(`${doctor}|${specialty}|${clinic}`),
-    doctor,
+    key: cleanText(provider.key) || normalizeLookupKey(`${name}|${specialtyKey}|${clinic || "unspecified"}`),
+    name,
+    doctor: name,
     specialty,
     clinic,
-    address: cleanText(provider.address),
-    phone: cleanText(provider.phone),
+    address: cleanText(provider.address) || cleanText(provider.place),
+    phone: cleanText(provider.phone) || cleanText(provider.contactPhone),
     insuranceAccepted: cleanText(provider.insuranceAccepted),
     portalLink: cleanText(provider.portalLink),
+    notes: cleanText(provider.notes),
     createdAt: cleanText(provider.createdAt) || new Date().toISOString(),
     updatedAt: cleanText(provider.updatedAt) || "",
   };
@@ -2882,6 +3686,977 @@ function handleImportBackupFile(event) {
   reader.readAsText(file);
 }
 
+function normalizeCarePlanItem(item, providers = state.providers || []) {
+  const name = cleanText(item?.name);
+  if (!name) {
+    return null;
+  }
+
+  const rawFrequencyMonths = item?.frequencyMonths;
+  const frequencyMonths =
+    rawFrequencyMonths === null || rawFrequencyMonths === undefined || rawFrequencyMonths === ""
+      ? null
+      : numberOrFallback(rawFrequencyMonths, null);
+
+  let providerId = cleanText(item?.providerId);
+  let providerName = cleanText(item?.providerName) || cleanText(item?.provider);
+
+  if (providerId) {
+    const linkedProvider = providers.find((provider) => provider.id === providerId);
+    if (linkedProvider) {
+      if (!providerName) {
+        providerName = linkedProvider.doctor;
+      }
+    } else {
+      providerId = "";
+    }
+  }
+
+  return {
+    id: cleanText(item.id) || crypto.randomUUID(),
+    key: cleanText(item.key) || normalizeLookupKey(name),
+    category: cleanText(item.category) || "General",
+    name,
+    summary: cleanText(item.summary),
+    frequency: cleanText(item.frequency),
+    frequencyMonths,
+    lastCompletedDate: cleanText(item.lastCompletedDate),
+    nextDueDate: cleanText(item.nextDueDate),
+    nextDueLabel: cleanText(item.nextDueLabel),
+    scheduledDate: cleanText(item.scheduledDate),
+    scheduledTime: cleanText(item.scheduledTime),
+    providerId,
+    providerName,
+    provider: providerName,
+    place: cleanText(item.place),
+    notes: cleanText(item.notes),
+    isOptional: Boolean(item.isOptional),
+    createdAt: cleanText(item.createdAt) || new Date().toISOString(),
+    updatedAt: cleanText(item.updatedAt) || "",
+  };
+}
+
+function providerNamesMatch(leftValue, rightValue) {
+  const left = cleanText(leftValue).toLowerCase();
+  const right = cleanText(rightValue).toLowerCase();
+  if (!left || !right) {
+    return false;
+  }
+  const leftPrimary = left.split(/[;,]/)[0].trim();
+  const rightPrimary = right.split(/[;,]/)[0].trim();
+  return left === right || leftPrimary === rightPrimary || left.includes(rightPrimary) || right.includes(leftPrimary);
+}
+
+function findCareTeamProviderByCarePlanText(providerText, providers = getAllProviders()) {
+  const providerName = cleanText(providerText);
+  if (!providerName) {
+    return null;
+  }
+
+  return (
+    providers.find((provider) => providerNamesMatch(providerName, getProviderRecordName(provider))) ||
+    providers.find((provider) => {
+      const doctor = getProviderRecordName(provider).toLowerCase();
+      const needle = providerName.toLowerCase();
+      return needle.includes(doctor) || doctor.includes(needle.split(/[;,]/)[0].trim());
+    }) ||
+    null
+  );
+}
+
+function getCarePlanProviderDisplayName(item) {
+  if (!item) {
+    return "Not saved";
+  }
+
+  if (item.providerId) {
+    const provider = getAllProviders().find((entry) => entry.id === item.providerId);
+    if (provider) {
+      return formatProviderDropdownLabel(getProviderRecordName(provider), provider.specialty);
+    }
+  }
+
+  return cleanText(item.providerName) || cleanText(item.provider) || "Not saved";
+}
+
+function getCarePlanLegacyProviderValue(providerText) {
+  return `${CARE_PLAN_LEGACY_PROVIDER_PREFIX}${encodeURIComponent(providerText)}`;
+}
+
+function decodeCarePlanLegacyProviderValue(value) {
+  if (!value.startsWith(CARE_PLAN_LEGACY_PROVIDER_PREFIX)) {
+    return "";
+  }
+  try {
+    return decodeURIComponent(value.slice(CARE_PLAN_LEGACY_PROVIDER_PREFIX.length));
+  } catch (error) {
+    return value.slice(CARE_PLAN_LEGACY_PROVIDER_PREFIX.length);
+  }
+}
+
+function shouldShowCarePlanLegacyOption(savedProviderName, savedProviderId, providers = getAllProviders()) {
+  const providerName = cleanText(savedProviderName);
+  if (!providerName) {
+    return false;
+  }
+
+  if (savedProviderId) {
+    const linkedProvider = providers.find((provider) => provider.id === savedProviderId);
+    if (linkedProvider && providerNamesMatch(providerName, linkedProvider.doctor)) {
+      return false;
+    }
+    return true;
+  }
+
+  return !findCareTeamProviderByCarePlanText(providerName, providers);
+}
+
+function buildCarePlanProviderSelectOptions({ savedProviderName = "", savedProviderId = "" } = {}) {
+  const lines = [`<option value="">No provider selected</option>`];
+
+  getAllProviders().forEach((provider) => {
+    lines.push(
+      `<option value="${PROVIDER_OPTION_PREFIX}${escapeHtml(provider.id)}">${escapeHtml(
+        formatProviderDropdownLabel(getProviderRecordName(provider), provider.specialty)
+      )}</option>`
+    );
+  });
+
+  if (shouldShowCarePlanLegacyOption(savedProviderName, savedProviderId)) {
+    const legacyValue = getCarePlanLegacyProviderValue(savedProviderName);
+    lines.push(
+      `<option value="${escapeHtml(legacyValue)}">${escapeHtml(savedProviderName)} (saved text)</option>`
+    );
+  }
+
+  lines.push(`<option value="${NEW_PROVIDER_OPTION}">+ Add new provider</option>`);
+  return lines.join("");
+}
+
+function getCarePlanProviderSelectValue(item) {
+  if (!item) {
+    return "";
+  }
+
+  if (item.providerId && getAllProviders().some((provider) => provider.id === item.providerId)) {
+    return `${PROVIDER_OPTION_PREFIX}${item.providerId}`;
+  }
+
+  const providerName = cleanText(item.providerName) || cleanText(item.provider);
+  if (!providerName) {
+    return "";
+  }
+
+  const matchedProvider = findCareTeamProviderByCarePlanText(providerName);
+  if (matchedProvider) {
+    return `${PROVIDER_OPTION_PREFIX}${matchedProvider.id}`;
+  }
+
+  return getCarePlanLegacyProviderValue(providerName);
+}
+
+function resolveCarePlanProviderFromForm(selectionValue) {
+  const selection = cleanText(selectionValue);
+  if (!selection) {
+    return { providerId: "", providerName: "" };
+  }
+
+  if (selection.startsWith(CARE_PLAN_LEGACY_PROVIDER_PREFIX)) {
+    return {
+      providerId: "",
+      providerName: decodeCarePlanLegacyProviderValue(selection),
+    };
+  }
+
+  if (selection.startsWith(PROVIDER_OPTION_PREFIX)) {
+    const provider = getProviderFromSelectValue(selection);
+    return {
+      providerId: provider?.id || "",
+      providerName: provider?.doctor || "",
+    };
+  }
+
+  return { providerId: "", providerName: "" };
+}
+
+function renderCarePlanProviderSelect(item = null) {
+  if (!carePlanProviderSelect) {
+    return;
+  }
+
+  const savedProviderName = cleanText(item?.providerName) || cleanText(item?.provider);
+  const savedProviderId = cleanText(item?.providerId);
+  const selectedValue = getCarePlanProviderSelectValue(item);
+  carePlanProviderSelect.innerHTML = buildCarePlanProviderSelectOptions({
+    savedProviderName,
+    savedProviderId,
+  });
+
+  if (selectedValue && [...carePlanProviderSelect.options].some((option) => option.value === selectedValue)) {
+    carePlanProviderSelect.value = selectedValue;
+  } else {
+    carePlanProviderSelect.value = "";
+  }
+  carePlanProviderSelect.dataset.lastValue = carePlanProviderSelect.value;
+}
+
+function handleCarePlanProviderSelectChange() {
+  if (!carePlanProviderSelect) {
+    return;
+  }
+
+  if (carePlanProviderSelect.value === NEW_PROVIDER_OPTION) {
+    carePlanProviderSelect.value = carePlanProviderSelect.dataset.lastValue || "";
+    pendingProviderSelection = { target: "carePlan", carePlanId: editingCarePlanId };
+    openCareTeamForNewProvider("carePlan");
+    return;
+  }
+
+  carePlanProviderSelect.dataset.lastValue = carePlanProviderSelect.value;
+}
+
+function addDeletedCarePlanSeedKey(seedKey) {
+  const key = cleanText(seedKey);
+  if (!key) {
+    return;
+  }
+  state.deletedCarePlanSeedKeys = Array.isArray(state.deletedCarePlanSeedKeys)
+    ? state.deletedCarePlanSeedKeys
+    : [];
+  if (!state.deletedCarePlanSeedKeys.includes(key)) {
+    state.deletedCarePlanSeedKeys.push(key);
+  }
+}
+
+function deleteCarePlanItem(itemId) {
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    return;
+  }
+
+  if (!window.confirm(CARE_PLAN_DELETE_CONFIRM)) {
+    return;
+  }
+
+  if (item.key) {
+    addDeletedCarePlanSeedKey(item.key);
+  }
+
+  state.carePlan = state.carePlan.filter((entry) => entry.id !== itemId);
+  if (editingCarePlanId === itemId) {
+    editingCarePlanId = "";
+  }
+  persist();
+  showCarePlanList();
+  render();
+}
+
+function mergeInitialCarePlan() {
+  state.carePlan = Array.isArray(state.carePlan)
+    ? state.carePlan.map(normalizeCarePlanItem).filter(Boolean)
+    : [];
+  state.deletedCarePlanSeedKeys = Array.isArray(state.deletedCarePlanSeedKeys)
+    ? state.deletedCarePlanSeedKeys.map((item) => cleanText(item)).filter(Boolean)
+    : [];
+
+  const existingKeys = new Set(state.carePlan.map((item) => item.key));
+  const deletedSeedKeys = new Set(state.deletedCarePlanSeedKeys);
+  let changed = false;
+
+  INITIAL_CARE_PLAN.forEach((seed) => {
+    const lookupKey = cleanText(seed.key);
+    if (!lookupKey || deletedSeedKeys.has(lookupKey) || existingKeys.has(lookupKey)) {
+      return;
+    }
+
+    state.carePlan.push(
+      normalizeCarePlanItem({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        updatedAt: "",
+        ...seed,
+      })
+    );
+    existingKeys.add(lookupKey);
+    changed = true;
+  });
+
+  if (changed) {
+    state.carePlan = state.carePlan.map(normalizeCarePlanItem).filter(Boolean);
+    persist();
+  }
+}
+
+function getCarePlanStatus(item) {
+  const today = todayString();
+  const scheduledDate = cleanText(item.scheduledDate);
+  if (isValidIsoDate(scheduledDate) && scheduledDate >= today) {
+    return "scheduled";
+  }
+
+  const nextDueDate = cleanText(item.nextDueDate);
+  if (isValidIsoDate(nextDueDate)) {
+    if (nextDueDate < today) {
+      return "overdue";
+    }
+    if (nextDueDate <= addDays(today, 14)) {
+      return "due-soon";
+    }
+  }
+
+  const lastCompletedDate = cleanText(item.lastCompletedDate);
+  if (isValidIsoDate(lastCompletedDate) && lastCompletedDate >= subtractDays(today, 45)) {
+    if (!isValidIsoDate(nextDueDate) || nextDueDate > today) {
+      return "completed";
+    }
+  }
+
+  if (item.isOptional) {
+    return "optional";
+  }
+
+  return "on-track";
+}
+
+function carePlanStatusPill(status) {
+  const labels = {
+    overdue: { label: "Overdue", className: "overdue" },
+    "due-soon": { label: "Due soon", className: "soon" },
+    scheduled: { label: "Scheduled", className: "scheduled" },
+    completed: { label: "Completed", className: "completed" },
+    optional: { label: "Optional", className: "on-track" },
+    "on-track": { label: "On track", className: "on-track" },
+  };
+  const entry = labels[status] || labels["on-track"];
+  return `<span class="pill ${entry.className}">${entry.label}</span>`;
+}
+
+function formatCarePlanNextDue(item) {
+  const nextDueDate = cleanText(item.nextDueDate);
+  if (isValidIsoDate(nextDueDate)) {
+    const status = getCarePlanStatus(item);
+    if (status === "overdue") {
+      return `${formatDate(nextDueDate)} (Overdue)`;
+    }
+    if (status === "due-soon") {
+      return `${formatDate(nextDueDate)} (Due soon)`;
+    }
+    return formatDate(nextDueDate);
+  }
+  return cleanText(item.nextDueLabel) || "Not set";
+}
+
+function getCarePlanSearchHaystack(item) {
+  return [
+    item.category,
+    item.name,
+    item.summary,
+    item.frequency,
+    item.providerName,
+    item.provider,
+    getCarePlanProviderDisplayName(item),
+    item.place,
+    item.notes,
+    item.nextDueLabel,
+  ]
+    .map((value) => cleanText(value).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getFilteredCarePlanItems() {
+  const query = cleanText(carePlanSearchInput?.value).toLowerCase();
+  return (state.carePlan || [])
+    .map((item) => ({ ...item, computedStatus: getCarePlanStatus(item) }))
+    .filter((item) => {
+      if (query && !getCarePlanSearchHaystack(item).includes(query)) {
+        return false;
+      }
+      if (activeCarePlanFilter === "all") {
+        return true;
+      }
+      if (activeCarePlanFilter === "due-soon") {
+        return item.computedStatus === "due-soon";
+      }
+      if (activeCarePlanFilter === "overdue") {
+        return item.computedStatus === "overdue";
+      }
+      if (activeCarePlanFilter === "scheduled") {
+        return item.computedStatus === "scheduled";
+      }
+      if (activeCarePlanFilter === "completed") {
+        return item.computedStatus === "completed";
+      }
+      if (activeCarePlanFilter === "optional") {
+        return item.isOptional || item.computedStatus === "optional";
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const categoryCompare = a.category.localeCompare(b.category);
+      if (categoryCompare !== 0) {
+        return categoryCompare;
+      }
+      return compareOptionalDates(a.nextDueDate, b.nextDueDate) || a.name.localeCompare(b.name);
+    });
+}
+
+function groupCarePlanByCategory(items) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const category = item.category || "General";
+    if (!groups.has(category)) {
+      groups.set(category, []);
+    }
+    groups.get(category).push(item);
+  });
+  return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+function renderCarePlan() {
+  if (!carePlanList) {
+    return;
+  }
+
+  carePlanFilterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.carePlanFilter === activeCarePlanFilter);
+  });
+
+  const items = getFilteredCarePlanItems();
+  if (!items.length) {
+    carePlanList.classList.add("empty-state");
+    carePlanList.innerHTML = `<p class="muted">No care plan items match this view.</p>`;
+    return;
+  }
+
+  carePlanList.classList.remove("empty-state");
+  const groups = groupCarePlanByCategory(items);
+  carePlanList.innerHTML = groups
+    .map(
+      ([category, categoryItems]) => `
+        <section class="care-plan-category">
+          <h3>${escapeHtml(category)}</h3>
+          ${categoryItems.map((item) => renderCarePlanCard(item)).join("")}
+        </section>
+      `
+    )
+    .join("");
+}
+
+function renderCarePlanCard(item) {
+  const status = item.computedStatus || getCarePlanStatus(item);
+  const scheduledLine = isValidIsoDate(item.scheduledDate)
+    ? formatAppointmentDateTime(item.scheduledDate, item.scheduledTime)
+    : "Not scheduled";
+
+  return `
+    <article class="summary-card care-plan-card status-${escapeHtml(status)}">
+      <div class="card-head">
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span class="meta">${escapeHtml(item.summary || "No summary saved")}</span>
+          <span class="meta">Frequency: ${escapeHtml(item.frequency || "Not set")}</span>
+        </div>
+        ${carePlanStatusPill(status)}
+      </div>
+      <div class="detail-grid">
+        <span><strong>Next due</strong>${escapeHtml(formatCarePlanNextDue(item))}</span>
+        <span><strong>Last completed</strong>${formatDate(item.lastCompletedDate)}</span>
+        <span><strong>Scheduled</strong>${escapeHtml(scheduledLine)}</span>
+        <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}</span>
+        <span><strong>Place</strong>${escapeHtml(item.place || "Not saved")}</span>
+        <span><strong>Notes</strong>${escapeHtml(item.notes || "Not saved")}</span>
+      </div>
+      <div class="care-plan-card-actions">
+        <button class="button-secondary" type="button" data-care-plan-action="edit" data-care-plan-id="${escapeHtml(item.id)}">Edit</button>
+        <button class="button-danger-outline" type="button" data-care-plan-action="delete" data-care-plan-id="${escapeHtml(item.id)}">Delete</button>
+        <button class="button-primary" type="button" data-care-plan-action="log-visit" data-care-plan-id="${escapeHtml(item.id)}">Log Visit</button>
+        <button class="button-secondary" type="button" data-care-plan-action="schedule" data-care-plan-id="${escapeHtml(item.id)}">Schedule Appointment</button>
+        <button class="button-secondary" type="button" data-care-plan-action="complete" data-care-plan-id="${escapeHtml(item.id)}">Mark Complete</button>
+      </div>
+      <div class="follow-up-section">
+        <p class="eyebrow">Set next due</p>
+        <div class="follow-up-shortcut-row">
+          <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-3" data-care-plan-id="${escapeHtml(item.id)}">3 months</button>
+          <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-6" data-care-plan-id="${escapeHtml(item.id)}">6 months</button>
+          <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-12" data-care-plan-id="${escapeHtml(item.id)}">1 year</button>
+          <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-custom" data-care-plan-id="${escapeHtml(item.id)}">Custom date</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function showCarePlanView(view) {
+  carePlanPanels.forEach((panel) => {
+    panel.classList.toggle("is-hidden", panel.dataset.carePlanView !== view);
+    panel.classList.toggle("is-active", panel.dataset.carePlanView === view);
+  });
+}
+
+function showCarePlanList() {
+  editingCarePlanId = "";
+  showCarePlanView("list");
+  renderCarePlan();
+}
+
+function openCarePlanForm(itemId = "") {
+  switchScreen("care-plan");
+  showCarePlanView("form");
+  renderAllProviderDropdowns();
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (item) {
+    fillCarePlanForm(item);
+  } else {
+    resetCarePlanForm();
+  }
+}
+
+function resetCarePlanForm() {
+  editingCarePlanId = "";
+  if (!carePlanForm) {
+    return;
+  }
+  carePlanForm.reset();
+  carePlanForm.elements.carePlanId.value = "";
+  if (carePlanForm.elements.isOptional) {
+    carePlanForm.elements.isOptional.checked = false;
+  }
+  carePlanFormTitle.textContent = "Add care plan item";
+  carePlanSubmitButton.textContent = "Save Care Plan Item";
+  carePlanCancelButton.classList.add("is-hidden");
+  if (carePlanDeleteButton) {
+    carePlanDeleteButton.classList.add("is-hidden");
+  }
+  renderCarePlanProviderSelect(null);
+  if (carePlanNextDueHint) {
+    carePlanNextDueHint.textContent = "";
+    carePlanNextDueHint.classList.add("is-hidden");
+  }
+  syncCarePlanDueShortcutButtons();
+}
+
+function fillCarePlanForm(item) {
+  editingCarePlanId = item.id;
+  carePlanForm.elements.carePlanId.value = item.id;
+  carePlanForm.elements.category.value = item.category || "";
+  carePlanForm.elements.name.value = item.name || "";
+  carePlanForm.elements.summary.value = item.summary || "";
+  carePlanForm.elements.frequency.value = item.frequency || "";
+  carePlanForm.elements.frequencyMonths.value =
+    item.frequencyMonths === null || item.frequencyMonths === undefined ? "" : String(item.frequencyMonths);
+  carePlanForm.elements.lastCompletedDate.value = item.lastCompletedDate || "";
+  carePlanForm.elements.nextDueDate.value = item.nextDueDate || "";
+  carePlanForm.elements.nextDueLabel.value = item.nextDueLabel || "";
+  carePlanForm.elements.scheduledDate.value = item.scheduledDate || "";
+  carePlanForm.elements.scheduledTime.value = item.scheduledTime || "";
+  carePlanForm.elements.place.value = item.place || "";
+  carePlanForm.elements.notes.value = item.notes || "";
+  if (carePlanForm.elements.isOptional) {
+    carePlanForm.elements.isOptional.checked = Boolean(item.isOptional);
+  }
+  carePlanFormTitle.textContent = "Edit care plan item";
+  carePlanSubmitButton.textContent = "Update Care Plan Item";
+  carePlanCancelButton.classList.remove("is-hidden");
+  if (carePlanDeleteButton) {
+    carePlanDeleteButton.classList.remove("is-hidden");
+  }
+  renderCarePlanProviderSelect(item);
+  syncCarePlanDueShortcutButtons();
+}
+
+function handleCarePlanSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(carePlanForm);
+  const name = cleanText(formData.get("name"));
+  if (!name) {
+    return;
+  }
+
+  const rawFrequencyMonths = cleanText(formData.get("frequencyMonths"));
+  const frequencyMonths = rawFrequencyMonths ? numberOrFallback(rawFrequencyMonths, null) : null;
+  const itemId = cleanText(formData.get("carePlanId")) || crypto.randomUUID();
+  const existing = state.carePlan.find((entry) => entry.id === itemId);
+  const providerFields = resolveCarePlanProviderFromForm(cleanText(formData.get("carePlanProvider")));
+  const nextItem = normalizeCarePlanItem({
+    id: itemId,
+    key: existing?.key || normalizeLookupKey(name),
+    category: cleanText(formData.get("category")),
+    name,
+    summary: cleanText(formData.get("summary")),
+    frequency: cleanText(formData.get("frequency")),
+    frequencyMonths,
+    lastCompletedDate: cleanText(formData.get("lastCompletedDate")),
+    nextDueDate: cleanText(formData.get("nextDueDate")),
+    nextDueLabel: cleanText(formData.get("nextDueLabel")),
+    scheduledDate: cleanText(formData.get("scheduledDate")),
+    scheduledTime: cleanText(formData.get("scheduledTime")),
+    providerId: providerFields.providerId,
+    providerName: providerFields.providerName,
+    place: cleanText(formData.get("place")),
+    notes: cleanText(formData.get("notes")),
+    isOptional: formData.get("isOptional") === "on",
+    createdAt: existing?.createdAt,
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (!nextItem) {
+    return;
+  }
+
+  const existingIndex = state.carePlan.findIndex((entry) => entry.id === itemId);
+  if (existingIndex >= 0) {
+    state.carePlan[existingIndex] = nextItem;
+  } else {
+    state.carePlan.unshift(nextItem);
+  }
+
+  persist();
+  showCarePlanList();
+}
+
+function handleCarePlanListClick(event) {
+  const button = event.target.closest("[data-care-plan-action]");
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.carePlanAction;
+  const itemId = button.dataset.carePlanId;
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    return;
+  }
+
+  event.preventDefault();
+
+  if (action === "log-visit") {
+    openVisitLogFromCarePlan(item);
+    return;
+  }
+  if (action === "schedule") {
+    openAppointmentFromCarePlan(item);
+    return;
+  }
+  if (action === "edit") {
+    openCarePlanForm(item.id);
+    return;
+  }
+  if (action === "delete") {
+    deleteCarePlanItem(item.id);
+    return;
+  }
+  if (action === "complete") {
+    markCarePlanComplete(item.id);
+    return;
+  }
+  if (action === "due-3") {
+    setCarePlanNextDueFromMonths(item.id, 3);
+    return;
+  }
+  if (action === "due-6") {
+    setCarePlanNextDueFromMonths(item.id, 6);
+    return;
+  }
+  if (action === "due-12") {
+    setCarePlanNextDueFromMonths(item.id, 12);
+    return;
+  }
+  if (action === "due-custom") {
+    setCarePlanNextDueCustom(item.id);
+  }
+}
+
+function markCarePlanComplete(itemId) {
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    return;
+  }
+
+  const today = todayString();
+  item.lastCompletedDate = today;
+  if (item.frequencyMonths) {
+    item.nextDueDate = addMonths(today, item.frequencyMonths);
+    item.nextDueLabel = "";
+  }
+  item.updatedAt = new Date().toISOString();
+  persist();
+  render();
+}
+
+function setCarePlanNextDueFromMonths(itemId, months) {
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    return;
+  }
+
+  const anchor =
+    (isValidIsoDate(item.lastCompletedDate) && item.lastCompletedDate) ||
+    (isValidIsoDate(item.nextDueDate) && item.nextDueDate) ||
+    todayString();
+  item.nextDueDate = addMonths(anchor, months);
+  item.nextDueLabel = "";
+  item.updatedAt = new Date().toISOString();
+  persist();
+  render();
+}
+
+function setCarePlanNextDueCustom(itemId) {
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    return;
+  }
+
+  const current = item.nextDueDate || todayString();
+  const entered = window.prompt("Enter next due date (YYYY-MM-DD):", current);
+  if (!entered) {
+    return;
+  }
+
+  const normalized = cleanText(entered);
+  if (!isValidIsoDate(normalized)) {
+    alert("Please enter a valid date in YYYY-MM-DD format.");
+    return;
+  }
+
+  item.nextDueDate = normalized;
+  item.nextDueLabel = "";
+  item.updatedAt = new Date().toISOString();
+  persist();
+  render();
+}
+
+function getCarePlanDueAnchorDate() {
+  const lastCompleted = cleanText(carePlanForm?.elements.lastCompletedDate?.value);
+  if (isValidIsoDate(lastCompleted)) {
+    return { date: lastCompleted, missingAnchor: false };
+  }
+  return { date: todayString(), missingAnchor: true };
+}
+
+function syncCarePlanDueShortcutButtons() {
+  if (!carePlanForm) {
+    return;
+  }
+
+  const dueDate = cleanText(carePlanForm.elements.nextDueDate?.value);
+  const buttons = [...carePlanForm.querySelectorAll("[data-care-plan-due-preset]")];
+  buttons.forEach((button) => button.classList.remove("is-active"));
+
+  if (!isValidIsoDate(dueDate)) {
+    buttons.find((button) => button.dataset.carePlanDuePreset === "none")?.classList.add("is-active");
+    return;
+  }
+
+  const anchor = getCarePlanDueAnchorDate();
+  const threeMonthDate = addMonths(anchor.date, 3);
+  const sixMonthDate = addMonths(anchor.date, 6);
+  const oneYearDate = addMonths(anchor.date, 12);
+
+  if (dueDate === threeMonthDate) {
+    buttons.find((button) => button.dataset.carePlanDuePreset === "3months")?.classList.add("is-active");
+  } else if (dueDate === sixMonthDate) {
+    buttons.find((button) => button.dataset.carePlanDuePreset === "6months")?.classList.add("is-active");
+  } else if (dueDate === oneYearDate) {
+    buttons.find((button) => button.dataset.carePlanDuePreset === "1year")?.classList.add("is-active");
+  } else {
+    buttons.find((button) => button.dataset.carePlanDuePreset === "custom")?.classList.add("is-active");
+  }
+}
+
+function applyCarePlanDuePreset(preset) {
+  if (!carePlanForm) {
+    return;
+  }
+
+  const buttons = [...carePlanForm.querySelectorAll("[data-care-plan-due-preset]")];
+  buttons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.carePlanDuePreset === preset);
+  });
+
+  if (preset === "none") {
+    carePlanForm.elements.nextDueDate.value = "";
+    if (carePlanNextDueHint) {
+      carePlanNextDueHint.textContent = "";
+      carePlanNextDueHint.classList.add("is-hidden");
+    }
+    return;
+  }
+
+  const anchor = getCarePlanDueAnchorDate();
+  if (carePlanNextDueHint) {
+    if (anchor.missingAnchor) {
+      carePlanNextDueHint.textContent = "No last completed date — using today as the start date.";
+      carePlanNextDueHint.classList.remove("is-hidden");
+    } else {
+      carePlanNextDueHint.textContent = "";
+      carePlanNextDueHint.classList.add("is-hidden");
+    }
+  }
+
+  if (preset === "3months") {
+    carePlanForm.elements.nextDueDate.value = addMonths(anchor.date, 3);
+  } else if (preset === "6months") {
+    carePlanForm.elements.nextDueDate.value = addMonths(anchor.date, 6);
+  } else if (preset === "1year") {
+    carePlanForm.elements.nextDueDate.value = addMonths(anchor.date, 12);
+  } else if (preset === "custom") {
+    carePlanForm.elements.nextDueDate.focus();
+  }
+}
+
+function handleCarePlanDueShortcutClick(event) {
+  const button = event.target.closest("[data-care-plan-due-preset]");
+  if (!button || !carePlanForm) {
+    return;
+  }
+  event.preventDefault();
+  applyCarePlanDuePreset(button.dataset.carePlanDuePreset);
+}
+
+function applyCarePlanVisitLogCompletion(carePlanItemId, visitDate) {
+  const item = state.carePlan.find((entry) => entry.id === carePlanItemId);
+  if (!item) {
+    return;
+  }
+
+  const completedDate = isValidIsoDate(visitDate) ? visitDate : todayString();
+  item.lastCompletedDate = completedDate;
+  if (item.frequencyMonths) {
+    item.nextDueDate = addMonths(completedDate, item.frequencyMonths);
+    item.nextDueLabel = "";
+  }
+  item.updatedAt = new Date().toISOString();
+}
+
+function applyCarePlanAppointmentScheduled(carePlanItemId, appointment) {
+  const item = state.carePlan.find((entry) => entry.id === carePlanItemId);
+  if (!item) {
+    return;
+  }
+
+  const appointmentDate = cleanText(appointment.appointmentDate);
+  const appointmentTime = cleanText(appointment.appointmentTime);
+  if (appointmentDate) {
+    item.scheduledDate = appointmentDate;
+  }
+  if (appointmentTime) {
+    item.scheduledTime = appointmentTime;
+  }
+  if (isValidIsoDate(appointmentDate)) {
+    item.nextDueDate = appointmentDate;
+    item.nextDueLabel = "";
+  }
+  item.updatedAt = new Date().toISOString();
+}
+
+function openVisitLogFromCarePlan(item) {
+  pendingCarePlanItemId = item.id;
+  switchScreen("appointments");
+  showVisitsView("visit-log-form");
+  setAddEditMode("visit-log");
+  resetVisitLogForm();
+  renderAllProviderDropdowns();
+  visitLogForm.elements.date.value = todayString();
+  visitLogForm.elements.reason.value = item.name || "";
+  visitLogForm.elements.summary.value = [item.summary, item.notes].filter(Boolean).join("\n\n");
+  setVisitLogProviderFromCarePlan(item);
+  const clinicFromPlan = extractClinicName(item.place) || cleanText(item.place);
+  if (clinicFromPlan && !cleanText(visitLogForm.elements.clinic.value)) {
+    visitLogForm.elements.clinic.value = clinicFromPlan;
+  }
+  const linkedProvider = item.providerId
+    ? getAllProviders().find((provider) => provider.id === item.providerId)
+    : findCareTeamProviderByCarePlanText(item.providerName || item.provider);
+  const specialtyValue = linkedProvider?.specialty || item.category || "";
+  setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, specialtyValue);
+  syncVisitLogCustomSpecialtyVisibility();
+}
+
+function openAppointmentFromCarePlan(item) {
+  pendingCarePlanItemId = item.id;
+  switchScreen("appointments");
+  showVisitsView("appointment-form");
+  setAddEditMode("appointment");
+  resetAppointmentForm();
+  renderAllProviderDropdowns();
+  setAppointmentDoctorFromCarePlan(item);
+  const linkedProvider = item.providerId
+    ? getAllProviders().find((provider) => provider.id === item.providerId)
+    : findCareTeamProviderByCarePlanText(item.providerName || item.provider);
+  const specialtyValue = linkedProvider?.specialty || item.category || "";
+  setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, specialtyValue);
+  setSelectWithCustomValue(reasonSelect, appointmentForm.elements.customReasonForVisit, item.name || "");
+  appointmentForm.elements.place.value = item.place || linkedProvider?.address || "";
+  appointmentForm.elements.clinic.value =
+    extractClinicName(item.place) || linkedProvider?.clinic || extractClinicName(linkedProvider?.address) || "";
+  appointmentForm.elements.appointmentDate.value = item.scheduledDate || item.nextDueDate || "";
+  appointmentForm.elements.appointmentTime.value = item.scheduledTime || "";
+  appointmentForm.elements.appointmentStatus.value =
+    item.scheduledDate || item.nextDueDate ? "Scheduled" : "Planned";
+  appointmentForm.elements.notes.value = [item.summary, item.notes].filter(Boolean).join("\n\n");
+  if (isValidIsoDate(item.nextDueDate)) {
+    appointmentForm.elements.nextRecommendedVisit.value = item.nextDueDate;
+  }
+  syncCustomFieldVisibility();
+  syncAppointmentPreview();
+  syncFollowUpShortcutButtons(appointmentForm, "next-visit");
+}
+
+function setVisitLogProviderFromCarePlan(item) {
+  if (item.providerId && getAllProviders().some((provider) => provider.id === item.providerId)) {
+    visitLogProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${item.providerId}`;
+    syncVisitLogProviderSelection();
+    return;
+  }
+  setVisitLogProviderFromText(item.providerName || item.provider);
+}
+
+function setAppointmentDoctorFromCarePlan(item) {
+  if (item.providerId && getAllProviders().some((provider) => provider.id === item.providerId)) {
+    providerSelect.value = `${PROVIDER_OPTION_PREFIX}${item.providerId}`;
+    handleAppointmentProviderSelectChange();
+    return;
+  }
+  setAppointmentDoctorFromText(item.providerName || item.provider);
+}
+
+function setVisitLogProviderFromText(providerText) {
+  const providerName = cleanText(providerText);
+  if (!providerName) {
+    return;
+  }
+
+  const matchedProvider = findCareTeamProviderByCarePlanText(providerName);
+
+  if (matchedProvider) {
+    visitLogProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${matchedProvider.id}`;
+    syncVisitLogProviderSelection();
+    return;
+  }
+
+  visitLogProviderSelect.value = "";
+}
+
+function setAppointmentDoctorFromText(providerText) {
+  const providerName = cleanText(providerText);
+  if (!providerName) {
+    return;
+  }
+
+  const matchedProvider = findCareTeamProviderByCarePlanText(providerName);
+
+  if (matchedProvider) {
+    providerSelect.value = `${PROVIDER_OPTION_PREFIX}${matchedProvider.id}`;
+    handleAppointmentProviderSelectChange();
+    return;
+  }
+
+  providerSelect.value = "__custom__";
+  appointmentForm.elements.customDoctor.value = providerName;
+  syncCustomFieldVisibility();
+}
+
 function mergeInitialAppointmentLogs() {
   const existingKeys = new Set(state.appointments.map((appointment) => getSeedAppointmentKey(appointment)));
   const deletedSeedKeys = new Set(state.deletedSeedKeys || []);
@@ -2925,29 +4700,72 @@ function addDeletedSeedKey(appointment) {
   }
 }
 
+function restoreProviderSelectValue(select, previousValue) {
+  if (!select || !previousValue) {
+    return;
+  }
+
+  if ([...select.options].some((option) => option.value === previousValue)) {
+    select.value = previousValue;
+    return;
+  }
+
+  if (previousValue.startsWith(PROVIDER_OPTION_PREFIX)) {
+    const providerId = previousValue.slice(PROVIDER_OPTION_PREFIX.length);
+    if (getAllProviders().some((provider) => provider.id === providerId)) {
+      select.value = previousValue;
+    }
+  }
+}
+
+function renderAllProviderDropdowns() {
+  const appointmentProviderValue = providerSelect?.value || "";
+  const visitLogProviderValue = visitLogProviderSelect?.value || "";
+
+  if (providerSelect) {
+    providerSelect.innerHTML = buildAppointmentProviderOptions();
+    restoreProviderSelectValue(providerSelect, appointmentProviderValue);
+  }
+
+  if (visitLogProviderSelect) {
+    visitLogProviderSelect.innerHTML = buildVisitLogProviderOptions();
+    restoreProviderSelectValue(visitLogProviderSelect, visitLogProviderValue);
+  }
+
+  if (carePlanProviderSelect) {
+    const carePlanItem = editingCarePlanId
+      ? state.carePlan.find((entry) => entry.id === editingCarePlanId)
+      : null;
+    const currentValue = carePlanProviderSelect.value;
+    renderCarePlanProviderSelect(carePlanItem);
+    restoreProviderSelectValue(carePlanProviderSelect, currentValue);
+    if (carePlanProviderSelect.value) {
+      carePlanProviderSelect.dataset.lastValue = carePlanProviderSelect.value;
+    }
+  }
+}
+
 function renderSelectOptions(resetSelections = false) {
-  if (!providerSelect && !visitLogProviderSelect) return;
-  const providerOptions = mergeTextLists(DEFAULT_PROVIDER_OPTIONS, state.appointments.map((item) => item.doctor));
-  const specialtyOptions = mergeTextLists(DEFAULT_SPECIALTY_OPTIONS, state.appointments.map((item) => item.specialty));
+  const specialtyOptions = mergeTextLists(
+    DEFAULT_SPECIALTY_OPTIONS,
+    state.appointments.map((item) => item.specialty).concat(getAllProviders().map((item) => item.specialty))
+  );
   const reasonOptions = mergeTextLists(DEFAULT_REASON_OPTIONS, state.appointments.map((item) => item.reasonForVisit));
-  const visitLogProviderValue = visitLogProviderSelect.value;
-  const visitLogSpecialtyValue = visitLogSpecialtySelect.value;
+  const visitLogSpecialtyValue = visitLogSpecialtySelect?.value || "";
   const providerSpecialtyValue = providerSpecialtySelect?.value;
 
-  if (resetSelections || !providerSelect.innerHTML) {
-    providerSelect.innerHTML = buildSelectOptions(providerOptions, "Select provider");
+  renderAllProviderDropdowns();
+
+  if (providerSelect && (resetSelections || !providerSelect.innerHTML)) {
     specialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
     providerSpecialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
     reasonSelect.innerHTML = buildSelectOptions(reasonOptions, "Select reason");
-  } else {
-    const providerValue = providerSelect.value;
+  } else if (providerSelect) {
     const specialtyValue = specialtySelect.value;
     const reasonValue = reasonSelect.value;
-    providerSelect.innerHTML = buildSelectOptions(providerOptions, "Select provider");
     specialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
     providerSpecialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
     reasonSelect.innerHTML = buildSelectOptions(reasonOptions, "Select reason");
-    if ([...providerSelect.options].some((option) => option.value === providerValue)) providerSelect.value = providerValue;
     if ([...specialtySelect.options].some((option) => option.value === specialtyValue)) specialtySelect.value = specialtyValue;
     if ([...reasonSelect.options].some((option) => option.value === reasonValue)) reasonSelect.value = reasonValue;
     if (providerSpecialtySelect && [...providerSpecialtySelect.options].some((option) => option.value === providerSpecialtyValue)) {
@@ -2955,27 +4773,26 @@ function renderSelectOptions(resetSelections = false) {
     }
   }
 
-  visitLogProviderSelect.innerHTML = buildVisitLogProviderOptions();
-  visitLogSpecialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
-  if ([...visitLogProviderSelect.options].some((option) => option.value === visitLogProviderValue)) {
-    visitLogProviderSelect.value = visitLogProviderValue;
-  }
-  if ([...visitLogSpecialtySelect.options].some((option) => option.value === visitLogSpecialtyValue)) {
-    visitLogSpecialtySelect.value = visitLogSpecialtyValue;
+  if (visitLogSpecialtySelect) {
+    visitLogSpecialtySelect.innerHTML = buildSelectOptions(specialtyOptions, "Select specialty");
+    if ([...visitLogSpecialtySelect.options].some((option) => option.value === visitLogSpecialtyValue)) {
+      visitLogSpecialtySelect.value = visitLogSpecialtyValue;
+    }
   }
 }
 
+function buildAppointmentProviderOptions() {
+  return buildCareTeamProviderSelectOptions({
+    placeholder: "Select provider",
+    includeCustom: true,
+  });
+}
+
 function buildVisitLogProviderOptions() {
-  return [`<option value="">Choose appointment / provider</option>`]
-    .concat(
-      state.appointments.map(
-        (appointment) =>
-          `<option value="${escapeHtml(appointment.id)}">${escapeHtml(
-            `${appointment.doctor || "Unknown provider"} • ${appointment.title || "Untitled appointment"}`
-          )}</option>`
-      )
-    )
-    .join("");
+  return buildCareTeamProviderSelectOptions({
+    placeholder: "Select provider",
+    includeCustom: false,
+  });
 }
 
 function buildSelectOptions(options, placeholder) {
@@ -3093,24 +4910,36 @@ function normalizeAppointments(appointments) {
 }
 
 function normalizeVisitHistory(visitHistory) {
-  return (visitHistory || [])
-    .map((log) => ({
-      id: cleanText(log.id) || crypto.randomUUID(),
-      date: cleanText(log.date),
-      provider: cleanText(log.provider),
-      specialty: cleanText(log.specialty),
-      reason: cleanText(log.reason),
-      status: cleanText(log.status) || "Completed",
-      summary: cleanText(log.summary),
-      results: cleanText(log.results),
-      followUpNeeded: cleanText(log.followUpNeeded),
-      followUpDueDate: cleanText(log.followUpDueDate),
-      costCopay: cleanText(log.costCopay),
-      clinic: cleanText(log.clinic),
-      phone: cleanText(log.phone),
-      portalLink: cleanText(log.portalLink),
-      insuranceAccepted: cleanText(log.insuranceAccepted),
-    }))
+  return normalizeVisitLogs(visitHistory);
+}
+
+function normalizeVisitLog(log) {
+  return {
+    id: cleanText(log.id) || crypto.randomUUID(),
+    providerId: cleanText(log.providerId),
+    linkedAppointmentId: cleanText(log.linkedAppointmentId),
+    date: cleanText(log.date),
+    provider: cleanText(log.provider),
+    specialty: cleanText(log.specialty),
+    reason: cleanText(log.reason),
+    status: cleanText(log.status) || "Completed",
+    summary: cleanText(log.summary),
+    results: cleanText(log.results),
+    followUpNeeded: cleanText(log.followUpNeeded),
+    followUpDueDate: cleanText(log.followUpDueDate),
+    costCopay: cleanText(log.costCopay),
+    clinic: cleanText(log.clinic),
+    phone: cleanText(log.phone),
+    portalLink: cleanText(log.portalLink),
+    insuranceAccepted: cleanText(log.insuranceAccepted),
+    createdAt: cleanText(log.createdAt) || new Date().toISOString(),
+    updatedAt: cleanText(log.updatedAt) || "",
+  };
+}
+
+function normalizeVisitLogs(visitLogs) {
+  return (visitLogs || [])
+    .map((log) => normalizeVisitLog(log))
     .filter(
       (log) =>
         log.date ||
@@ -3124,6 +4953,94 @@ function normalizeVisitHistory(visitHistory) {
         log.costCopay
     )
     .sort((a, b) => compareOptionalDates(b.date, a.date));
+}
+
+function migrateVisitLogsAndCleanupAppointments(appointments, visitLogs) {
+  const mergedLogs = normalizeVisitLogs(visitLogs);
+  const seenLogIds = new Set(mergedLogs.map((log) => log.id));
+
+  appointments.forEach((appointment) => {
+    normalizeVisitHistory(appointment.visitHistory).forEach((log) => {
+      if (seenLogIds.has(log.id)) {
+        return;
+      }
+      mergedLogs.push(
+        normalizeVisitLog({
+          ...log,
+          linkedAppointmentId: appointment.id,
+          provider: log.provider || appointment.doctor,
+          specialty: log.specialty || appointment.specialty,
+          clinic: log.clinic || appointment.clinic || extractClinicName(appointment.place),
+          phone: log.phone || appointment.contactPhone,
+          portalLink: log.portalLink || appointment.portalLink,
+          insuranceAccepted: log.insuranceAccepted || appointment.insuranceAccepted,
+        })
+      );
+      seenLogIds.add(log.id);
+    });
+    appointment.visitHistory = [];
+  });
+
+  const cleanedAppointments = appointments
+    .filter((appointment) => !shouldHideAutoGeneratedAppointment(appointment, mergedLogs))
+    .map((appointment) => ({
+      ...appointment,
+      visitHistory: [],
+      autoGeneratedFromVisitLog: false,
+    }));
+
+  return {
+    appointments: cleanedAppointments,
+    visitLogs: mergedLogs.sort((a, b) => compareOptionalDates(b.date, a.date)),
+  };
+}
+
+function shouldHideAutoGeneratedAppointment(appointment, visitLogs = state.visitLogs) {
+  if (appointment.userCreated === true) {
+    return false;
+  }
+  if (appointment.autoGeneratedFromVisitLog === true) {
+    return true;
+  }
+
+  const hasScheduledVisit =
+    isValidIsoDate(appointment.appointmentDate) ||
+    cleanText(appointment.appointmentTime) ||
+    cleanText(appointment.reasonForVisit) ||
+    cleanText(appointment.questionsToAsk) ||
+    cleanText(appointment.title) ||
+    cleanText(appointment.notes) ||
+    appointment.intervalMonths;
+
+  if (hasScheduledVisit) {
+    return false;
+  }
+
+  const linkedLogs = visitLogs.filter((log) => log.linkedAppointmentId === appointment.id);
+  const nestedLogs = normalizeVisitHistory(appointment.visitHistory);
+
+  if (linkedLogs.length > 0 && !hasScheduledVisit && nestedLogs.length === 0) {
+    return true;
+  }
+
+  if (
+    !hasScheduledVisit &&
+    nestedLogs.length === 0 &&
+    visitLogs.some((log) => normalizeLookupKey(log.provider) === normalizeLookupKey(appointment.doctor))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function getVisitLogsForAppointment(appointment) {
+  return normalizeVisitLogs(state.visitLogs).filter(
+    (log) =>
+      log.linkedAppointmentId === appointment.id ||
+      (!log.linkedAppointmentId &&
+        normalizeLookupKey(log.provider) === normalizeLookupKey(appointment.doctor))
+  );
 }
 
 function getLatestVisitDate(visitHistory) {
