@@ -706,6 +706,40 @@ let pendingProviderSelection = null;
 let activeCarePlanFilter = "all";
 let editingCarePlanId = "";
 let pendingCarePlanItemId = "";
+let activeTab = "dashboard";
+
+const TAB_SCREEN_MAP = {
+  dashboard: "dashboard",
+  visits: "appointments",
+  carePlan: "care-plan",
+  careTeam: "care-team",
+  insurance: "insurance",
+};
+
+const SCREEN_TAB_MAP = {
+  dashboard: "dashboard",
+  appointments: "visits",
+  "care-plan": "carePlan",
+  "care-team": "careTeam",
+  insurance: "insurance",
+};
+
+const TAB_HASH_MAP = {
+  dashboard: "#dashboard",
+  visits: "#visits",
+  carePlan: "#care-plan",
+  careTeam: "#care-team",
+  insurance: "#insurance",
+};
+
+const HASH_TAB_MAP = {
+  dashboard: "dashboard",
+  visits: "visits",
+  appointments: "visits",
+  "care-plan": "carePlan",
+  "care-team": "careTeam",
+  insurance: "insurance",
+};
 
 function on(element, eventName, handler) {
   if (element) element.addEventListener(eventName, handler);
@@ -723,6 +757,7 @@ mergeInitialAppointmentLogs();
 mergeInitialCarePlan();
 syncForms();
 showVisitsList();
+initTabFromHash();
 render();
 renderVisitHistoryGlobalList();
 maybeSendBrowserNotifications();
@@ -824,12 +859,12 @@ function bindEvents() {
   }
   if (homeViewVisitsAction) {
     on(homeViewVisitsAction, "click", () => {
-      switchScreen("appointments");
+      switchTab("visits");
       showVisitsList();
     });
   }
   if (homeCareTeamAction) {
-    on(homeCareTeamAction, "click", () => openCareTeamProviders({ scrollToList: true }));
+    on(homeCareTeamAction, "click", () => switchTab("careTeam"));
   }
   if (editProvidersButton) {
     on(editProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
@@ -845,10 +880,10 @@ function bindEvents() {
     on(providerFormCancelButton, "click", resetProviderForm);
   }
   if (homeInsuranceAction) {
-    on(homeInsuranceAction, "click", () => switchScreen("insurance"));
+    on(homeInsuranceAction, "click", () => switchTab("insurance"));
   }
   if (homeCarePlanAction) {
-    on(homeCarePlanAction, "click", () => switchScreen("care-plan"));
+    on(homeCarePlanAction, "click", () => switchTab("carePlan"));
   }
   if (carePlanAddItemButton) {
     on(carePlanAddItemButton, "click", () => openCarePlanForm());
@@ -943,6 +978,7 @@ function bindEvents() {
   on(providerSpecialtySelect, "change", syncProviderCustomSpecialtyVisibility);
   on(visitLogProviderSelect, "change", syncVisitLogProviderSelection);
   on(visitLogSpecialtySelect, "change", syncVisitLogCustomSpecialtyVisibility);
+  window.addEventListener("hashchange", handleHashChange);
   if (repeatVisitToggle) {
     on(repeatVisitToggle, "change", () => {
       syncRepeatRuleVisibility();
@@ -3588,7 +3624,39 @@ function updateNotificationButton() {
   notificationButton.textContent = "Enable Browser Notifications";
 }
 
-function switchScreen(target) {
+function screenTargetToTab(target) {
+  return SCREEN_TAB_MAP[target] || target;
+}
+
+function tabToScreenTarget(tab) {
+  return TAB_SCREEN_MAP[tab] || tab;
+}
+
+function switchTab(tab, options = {}) {
+  activeTab = tab;
+  return switchScreen(tabToScreenTarget(tab), options);
+}
+
+function initTabFromHash() {
+  const hashKey = cleanText(location.hash.replace(/^#/, ""));
+  const tab = HASH_TAB_MAP[hashKey];
+  if (tab) {
+    switchTab(tab, { updateHash: false, scrollToTop: false });
+    return;
+  }
+  switchTab(activeTab, { updateHash: false, scrollToTop: false });
+}
+
+function handleHashChange() {
+  const hashKey = cleanText(location.hash.replace(/^#/, ""));
+  const tab = HASH_TAB_MAP[hashKey];
+  if (tab && tab !== activeTab) {
+    switchTab(tab, { updateHash: false });
+  }
+}
+
+function switchScreen(target, { updateHash = true, scrollToTop = true } = {}) {
+  activeTab = screenTargetToTab(target);
   const previousScreen = screens.find((screen) => screen.classList.contains("is-active"))?.dataset.screen;
   screens.forEach((screen) => screen.classList.toggle("is-active", screen.dataset.screen === target));
   screenButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.screenTarget === target));
@@ -3597,6 +3665,15 @@ function switchScreen(target) {
   }
   if (target === "care-plan" && previousScreen !== "care-plan") {
     showCarePlanList();
+  }
+  if (updateHash) {
+    const nextHash = TAB_HASH_MAP[activeTab] || `#${target}`;
+    if (location.hash !== nextHash) {
+      history.replaceState(null, "", `${location.pathname}${location.search}${nextHash}`);
+    }
+  }
+  if (scrollToTop) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 

@@ -228,6 +228,15 @@ textarea {
   margin-top: 18px;
 }
 
+.app-screen {
+  display: none;
+  gap: 18px;
+}
+
+.app-screen.is-active {
+  display: grid;
+}
+
 .panel {
   padding: var(--section-padding);
 }
