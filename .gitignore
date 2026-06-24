@@ -1,0 +1,6 @@
+.DS_Store
+medical-appointment-tracker-backup*.json
+*.backup.json
+*.pdf
+medical-records/
+uploads/

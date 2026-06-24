@@ -108,6 +108,7 @@
 
       <nav class="tabbar" aria-label="Primary">
         <button class="tabbar-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
+        <button class="tabbar-button" type="button" data-screen-target="timeline">Timeline</button>
         <button class="tabbar-button" type="button" data-screen-target="appointments">Visits</button>
         <button class="tabbar-button" type="button" data-screen-target="results">Results</button>
         <button class="tabbar-button" type="button" data-screen-target="care-plan">Care Plan</button>
@@ -131,32 +132,19 @@
             <div class="quick-actions-grid">
               <button id="homeAddAppointmentAction" class="action-card button-primary" type="button">Add Appointment</button>
               <button id="homeLogVisitAction" class="action-card button-secondary" type="button">Log Visit</button>
-              <button id="homeViewVisitsAction" class="action-card button-secondary" type="button">View Visits</button>
-              <button id="homeCareTeamAction" class="action-card button-secondary" type="button">Care Team</button>
-              <button id="homeInsuranceAction" class="action-card button-secondary" type="button">Insurance</button>
-              <button id="homeViewResultsAction" class="action-card button-secondary" type="button">View Results</button>
-              <button id="homeCarePlanAction" class="action-card button-secondary" type="button">Care Plan</button>
+              <button id="homeAddResultAction" class="action-card button-secondary" type="button">Add Result</button>
+              <button id="homeUploadRecordAction" class="action-card button-secondary" type="button">Upload Record</button>
+              <button id="homeCarePlanAction" class="action-card button-secondary" type="button">View Care Plan</button>
             </div>
-            <div class="stats-grid home-status-grid">
+            <div class="stats-grid home-status-grid dashboard-summary-grid">
               <article class="stat-card">
-                <span class="stat-label">Upcoming reminders</span>
-                <strong id="homeReminderCount" class="stat-value">0</strong>
-              </article>
-              <article class="stat-card">
-                <span class="stat-label">Tracked providers</span>
-                <strong id="homeProviderCount" class="stat-value">0</strong>
-              </article>
-              <article class="stat-card">
-                <span class="stat-label">Overdue alerts</span>
-                <strong id="homeOverdueCount" class="stat-value">0</strong>
-              </article>
-              <article class="stat-card">
-                <span class="stat-label">Scheduled visits</span>
+                <span class="stat-label">Upcoming appointments</span>
                 <strong id="homeScheduledCount" class="stat-value">0</strong>
               </article>
-            </div>
-
-            <div class="stats-grid home-results-grid">
+              <article class="stat-card">
+                <span class="stat-label">Overdue care plan</span>
+                <strong id="homeOverdueCount" class="stat-value">0</strong>
+              </article>
               <article class="stat-card">
                 <span class="stat-label">Pending results</span>
                 <strong id="homePendingResultsCount" class="stat-value">0</strong>
@@ -166,44 +154,46 @@
                 <strong id="homeAbnormalResultsCount" class="stat-value">0</strong>
               </article>
               <article class="stat-card">
-                <span class="stat-label">Results need follow-up</span>
-                <strong id="homeResultsFollowUpCount" class="stat-value">0</strong>
+                <span class="stat-label">Tracked providers</span>
+                <strong id="homeProviderCount" class="stat-value">0</strong>
               </article>
               <article class="stat-card">
-                <span class="stat-label">Treatment completed</span>
-                <strong id="homeTreatmentCompletedCount" class="stat-value">0</strong>
+                <span class="stat-label">Recent visits</span>
+                <strong id="homeRecentVisitsCount" class="stat-value">0</strong>
               </article>
             </div>
 
-            <div class="dashboard-grid">
-              <section class="dashboard-subsection">
-                <h3 class="subsection-title">Today</h3>
-                <div id="homeTodayList" class="compact-list"></div>
-              </section>
-              <section class="dashboard-subsection">
-                <h3 class="subsection-title">Upcoming</h3>
-                <div id="homeUpcomingList" class="compact-list"></div>
-              </section>
-              <section class="dashboard-subsection">
-                <h3 class="subsection-title">Overdue</h3>
-                <div id="homeOverdueList" class="compact-list"></div>
-              </section>
-              <section class="dashboard-subsection dashboard-subsection-wide">
-                <h3 class="subsection-title">Results Needing Attention</h3>
-                <div id="homeResultsAttentionList" class="compact-list"></div>
-              </section>
-              <section class="dashboard-subsection dashboard-subsection-wide">
-                <h3 class="subsection-title">Recent Visit Logs</h3>
-                <div id="homeRecentLogsList" class="compact-list"></div>
-              </section>
-            </div>
-
-            <section id="homeRecommendationsSection" class="dashboard-subsection is-hidden">
-              <h3 class="subsection-title">Recommendations based on your profile</h3>
-              <div id="recommendationList" class="compact-list"></div>
+            <section class="dashboard-subsection dashboard-subsection-wide">
+              <h3 class="subsection-title">Recent visits</h3>
+              <div id="homeRecentLogsList" class="compact-list"></div>
             </section>
           </section>
           <input id="importBackupInput" class="is-hidden" type="file" accept="application/json" />
+        </section>
+
+        <section class="app-screen" data-screen="timeline">
+          <section class="panel section-card">
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">Timeline</p>
+                <h2>All medical events</h2>
+                <p class="meta">Appointments, visits, results, treatments, and care plan activity in date order.</p>
+              </div>
+            </div>
+            <label class="visits-search-field">
+              Search timeline
+              <input id="timelineSearchInput" type="search" placeholder="Search provider, clinic, test, care plan" />
+            </label>
+            <div class="timeline-filter-row actions-row">
+              <button class="button-secondary is-active" type="button" data-timeline-filter="all">All</button>
+              <button class="button-secondary" type="button" data-timeline-filter="appointment">Appointments</button>
+              <button class="button-secondary" type="button" data-timeline-filter="visit">Visits</button>
+              <button class="button-secondary" type="button" data-timeline-filter="result">Results</button>
+              <button class="button-secondary" type="button" data-timeline-filter="treatment">Treatment</button>
+              <button class="button-secondary" type="button" data-timeline-filter="care-plan">Care Plan</button>
+            </div>
+            <div id="globalTimelineList" class="timeline-list empty-state"></div>
+          </section>
         </section>
 
         <section class="app-screen" data-screen="appointments">
@@ -211,17 +201,19 @@
             <div class="section-heading compact-heading">
               <div>
                 <p class="eyebrow">Visits</p>
-                <h2>Visits &amp; Medical History</h2>
+                <h2>Visits</h2>
+                <p class="meta">Scheduled appointments and completed visit logs.</p>
               </div>
             </div>
             <p id="visitsRecordCount" class="meta visits-record-count">0 records</p>
             <div class="visits-action-bar actions-row">
               <button id="visitsAddAppointmentButton" class="button-primary" type="button">+ Add Appointment</button>
               <button id="visitsLogVisitButton" class="button-secondary" type="button">+ Log Visit</button>
+              <button id="visitsUploadRecordButton" class="button-secondary" type="button">Upload Record</button>
             </div>
-            <div class="record-view-toggle actions-row">
-              <button class="button-secondary is-active" type="button" data-record-view="list">List view</button>
-              <button class="button-secondary" type="button" data-record-view="timeline">Timeline view</button>
+            <div class="visits-subtab-row actions-row">
+              <button class="button-secondary is-active" type="button" data-visits-subtab="appointments">Scheduled Appointments</button>
+              <button class="button-secondary" type="button" data-visits-subtab="visit-logs">Completed Visit Logs</button>
             </div>
             <details id="visitsFiltersPanel" class="visits-filters-panel section-card">
               <summary class="filters-toggle">Search &amp; Filters</summary>
@@ -231,20 +223,20 @@
               </label>
               <div class="form-grid appointment-filters compact-grid">
                 <label>
-                  Type
-                  <select id="recordTypeFilter">
-                    <option value="all">All records</option>
-                    <option value="appointments">Appointments only</option>
-                    <option value="visit-logs">Visit logs only</option>
-                  </select>
-                </label>
-                <label>
                   Sort by date
                   <select id="recordSortSelect">
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
                     <option value="upcoming">Upcoming first</option>
                     <option value="overdue">Overdue first</option>
+                  </select>
+                </label>
+                <label class="is-hidden">
+                  Type
+                  <select id="recordTypeFilter">
+                    <option value="all">All records</option>
+                    <option value="appointments">Appointments only</option>
+                    <option value="visit-logs">Visit logs only</option>
                   </select>
                 </label>
                 <label>
@@ -278,17 +270,8 @@
                 </label>
               </div>
             </details>
-            <div id="visitTimelineContainer" class="timeline-container is-hidden">
-              <div class="section-heading compact-heading">
-                <div>
-                  <p class="eyebrow">Visit Timeline</p>
-                  <h3>Chronological view of appointments and logs</h3>
-                </div>
-              </div>
-              <div id="visitTimelineList" class="timeline-list empty-state"></div>
-            </div>
             <div id="appointmentList" class="card-list empty-state"></div>
-            <div class="visit-history-toolbar">
+            <div id="visitHistoryToolbar" class="visit-history-toolbar">
               <div class="inline-row">
                 <button id="visitHistorySelectButton" class="button-secondary" type="button">Select</button>
                 <button id="visitHistoryDeleteSelectedButton" class="button-danger is-hidden" type="button">Delete Selected</button>
@@ -1077,12 +1060,43 @@
       </main>
       <nav class="bottom-nav" aria-label="Primary mobile navigation">
         <button class="bottom-nav-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
+        <button class="bottom-nav-button" type="button" data-screen-target="timeline">Timeline</button>
         <button class="bottom-nav-button" type="button" data-screen-target="appointments">Visits</button>
         <button class="bottom-nav-button" type="button" data-screen-target="results">Results</button>
         <button class="bottom-nav-button" type="button" data-screen-target="care-plan">Care Plan</button>
         <button class="bottom-nav-button" type="button" data-screen-target="care-team">Care Team</button>
         <button class="bottom-nav-button" type="button" data-screen-target="insurance">Insurance</button>
       </nav>
+    </div>
+
+    <div id="uploadRecordModal" class="upload-record-modal is-hidden" role="dialog" aria-labelledby="uploadRecordModalTitle" aria-modal="true">
+      <div class="upload-record-modal-panel section-card">
+        <div class="section-heading compact-heading">
+          <div>
+            <p class="eyebrow">Upload</p>
+            <h2 id="uploadRecordModalTitle">Upload record</h2>
+            <p class="meta">Choose a record type, then select a PDF, TXT, or DOCX file. Files stay on your device; only parsed data is saved.</p>
+          </div>
+          <button id="uploadRecordModalClose" class="button-secondary" type="button" aria-label="Close">Close</button>
+        </div>
+        <label class="full-span">
+          Record type
+          <select id="uploadRecordTypeSelect">
+            <option value="therapy">Therapy record</option>
+            <option value="pcp">PCP note</option>
+            <option value="lab">Lab result</option>
+            <option value="sti">STI result</option>
+            <option value="appointment">Appointment document</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <input id="universalUploadInput" type="file" accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+        <div class="upload-record-modal-actions actions-row">
+          <button id="uploadRecordChooseFileButton" class="button-primary" type="button">Choose file</button>
+          <button id="uploadRecordModalCancelButton" class="button-secondary" type="button">Cancel</button>
+        </div>
+        <p id="uploadRecordModalStatus" class="meta upload-record-modal-status is-hidden" role="status"></p>
+      </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

@@ -676,15 +676,25 @@ const importBackupButton = document.querySelector("#importBackupButton");
 const importBackupInput = document.querySelector("#importBackupInput");
 const homeAddAppointmentAction = document.querySelector("#homeAddAppointmentAction");
 const homeLogVisitAction = document.querySelector("#homeLogVisitAction");
-const homeTodayList = document.querySelector("#homeTodayList");
-const homeUpcomingList = document.querySelector("#homeUpcomingList");
-const homeOverdueList = document.querySelector("#homeOverdueList");
+const homeAddResultAction = document.querySelector("#homeAddResultAction");
+const homeUploadRecordAction = document.querySelector("#homeUploadRecordAction");
 const homeRecentLogsList = document.querySelector("#homeRecentLogsList");
+const homeRecentVisitsCount = document.querySelector("#homeRecentVisitsCount");
 const homeOverdueCount = document.querySelector("#homeOverdueCount");
 const homeScheduledCount = document.querySelector("#homeScheduledCount");
-const recordViewButtons = [...document.querySelectorAll("[data-record-view]")];
-const visitTimelineContainer = document.querySelector("#visitTimelineContainer");
-const visitTimelineList = document.querySelector("#visitTimelineList");
+const visitsSubtabButtons = [...document.querySelectorAll("[data-visits-subtab]")];
+const visitHistoryToolbar = document.querySelector("#visitHistoryToolbar");
+const visitsUploadRecordButton = document.querySelector("#visitsUploadRecordButton");
+const globalTimelineList = document.querySelector("#globalTimelineList");
+const timelineSearchInput = document.querySelector("#timelineSearchInput");
+const timelineFilterButtons = [...document.querySelectorAll("[data-timeline-filter]")];
+const uploadRecordModal = document.querySelector("#uploadRecordModal");
+const uploadRecordModalClose = document.querySelector("#uploadRecordModalClose");
+const uploadRecordModalCancelButton = document.querySelector("#uploadRecordModalCancelButton");
+const uploadRecordTypeSelect = document.querySelector("#uploadRecordTypeSelect");
+const universalUploadInput = document.querySelector("#universalUploadInput");
+const uploadRecordChooseFileButton = document.querySelector("#uploadRecordChooseFileButton");
+const uploadRecordModalStatus = document.querySelector("#uploadRecordModalStatus");
 const carePlanList = document.querySelector("#carePlanList");
 const carePlanSearchInput = document.querySelector("#carePlanSearchInput");
 const carePlanFilterButtons = [...document.querySelectorAll("[data-care-plan-filter]")];
@@ -728,7 +738,6 @@ const resultsVisitLogSelect = document.querySelector("#resultsVisitLogSelect");
 const resultsCarePlanSelect = document.querySelector("#resultsCarePlanSelect");
 
 let editingAppointmentId = "";
-let activeRecordView = "list";
 let editingVisitLogId = "";
 let visitLogSaveInProgress = false;
 let editingVisitHistory = [];
@@ -755,10 +764,13 @@ let therapyUploadReviewState = null;
 let activeResultsFilter = "all";
 let activeResultsVisitFilter = "";
 let activeResultsCarePlanFilter = "";
+let activeVisitsSubtab = "appointments";
+let activeTimelineFilter = "all";
 let activeTab = "dashboard";
 
 const TAB_SCREEN_MAP = {
   dashboard: "dashboard",
+  timeline: "timeline",
   visits: "appointments",
   results: "results",
   carePlan: "care-plan",
@@ -768,6 +780,7 @@ const TAB_SCREEN_MAP = {
 
 const SCREEN_TAB_MAP = {
   dashboard: "dashboard",
+  timeline: "timeline",
   appointments: "visits",
   results: "results",
   "care-plan": "carePlan",
@@ -777,6 +790,7 @@ const SCREEN_TAB_MAP = {
 
 const TAB_HASH_MAP = {
   dashboard: "#dashboard",
+  timeline: "#timeline",
   visits: "#visits",
   results: "#results",
   carePlan: "#care-plan",
@@ -786,6 +800,7 @@ const TAB_HASH_MAP = {
 
 const HASH_TAB_MAP = {
   dashboard: "dashboard",
+  timeline: "timeline",
   visits: "visits",
   appointments: "visits",
   results: "results",
@@ -793,6 +808,22 @@ const HASH_TAB_MAP = {
   "care-team": "careTeam",
   insurance: "insurance",
 };
+
+const CARE_PLAN_CATEGORY_ORDER = [
+  "Annual / Primary Care",
+  "Primary Care",
+  "Annual Reset",
+  "Dental",
+  "Vision",
+  "Women's Health",
+  "OB-GYN",
+  "Sexual Health",
+  "Mental Health",
+  "Labs & Vaccines",
+  "Medications",
+  "Dermatology",
+  "General",
+];
 
 const RESULT_CATEGORIES = ["Lab", "STI / STD", "Imaging", "Diagnosis", "Medication / treatment", "Other"];
 const RESULT_STATUSES = [
@@ -833,6 +864,7 @@ mergeInitialCarePlan();
 migrateCarePlanVisitLogLinks();
 syncForms();
 showVisitsList();
+setVisitsSubtab("appointments");
 initTabFromHash();
 render();
 renderVisitHistoryGlobalList();
@@ -946,14 +978,17 @@ function bindEvents() {
   if (homeLogVisitAction) {
     on(homeLogVisitAction, "click", () => openVisitLogTab("", true));
   }
-  if (homeViewVisitsAction) {
-    on(homeViewVisitsAction, "click", () => {
-      switchTab("visits");
-      showVisitsList();
+  if (homeAddResultAction) {
+    on(homeAddResultAction, "click", () => {
+      switchTab("results");
+      openResultsForm();
     });
   }
-  if (homeCareTeamAction) {
-    on(homeCareTeamAction, "click", () => switchTab("careTeam"));
+  if (homeUploadRecordAction) {
+    on(homeUploadRecordAction, "click", openUploadRecordModal);
+  }
+  if (visitsUploadRecordButton) {
+    on(visitsUploadRecordButton, "click", openUploadRecordModal);
   }
   if (editProvidersButton) {
     on(editProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
@@ -968,14 +1003,8 @@ function bindEvents() {
   if (providerFormCancelButton) {
     on(providerFormCancelButton, "click", resetProviderForm);
   }
-  if (homeInsuranceAction) {
-    on(homeInsuranceAction, "click", () => switchTab("insurance"));
-  }
   if (homeCarePlanAction) {
     on(homeCarePlanAction, "click", () => switchTab("carePlan"));
-  }
-  if (homeViewResultsAction) {
-    on(homeViewResultsAction, "click", () => switchTab("results"));
   }
   if (resultsAddButton) {
     on(resultsAddButton, "click", () => openResultsForm());
@@ -1068,9 +1097,43 @@ function bindEvents() {
       });
     }
   });
-  recordViewButtons.forEach((button) => {
-    if (button) button.addEventListener("click", () => setRecordView(button.dataset.recordView));
+  visitsSubtabButtons.forEach((button) => {
+    if (button) {
+      button.addEventListener("click", () => setVisitsSubtab(button.dataset.visitsSubtab));
+    }
   });
+  timelineFilterButtons.forEach((button) => {
+    if (button) {
+      button.addEventListener("click", () => {
+        activeTimelineFilter = button.dataset.timelineFilter || "all";
+        timelineFilterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
+        renderGlobalTimeline();
+      });
+    }
+  });
+  if (timelineSearchInput) {
+    on(timelineSearchInput, "input", renderGlobalTimeline);
+  }
+  if (globalTimelineList) {
+    on(globalTimelineList, "click", handleGlobalTimelineClick);
+  }
+  if (uploadRecordChooseFileButton && universalUploadInput) {
+    on(uploadRecordChooseFileButton, "click", () => universalUploadInput.click());
+    on(universalUploadInput, "change", handleUniversalRecordUpload);
+  }
+  if (uploadRecordModalClose) {
+    on(uploadRecordModalClose, "click", closeUploadRecordModal);
+  }
+  if (uploadRecordModalCancelButton) {
+    on(uploadRecordModalCancelButton, "click", closeUploadRecordModal);
+  }
+  if (uploadRecordModal) {
+    on(uploadRecordModal, "click", (event) => {
+      if (event.target === uploadRecordModal) {
+        closeUploadRecordModal();
+      }
+    });
+  }
   on(quickAddButton, "click", () => {
     openAppointmentForm();
   });
@@ -1164,6 +1227,7 @@ function showVisitsView(view) {
 function showVisitsList() {
   showVisitsView("list");
   setAddEditMode("none");
+  renderVisitsSubtabView();
 }
 
 function focusVisitsSearchAndFilters() {
@@ -2216,16 +2280,16 @@ function syncForms() {
 function render() {
   const summaries = getAppointmentSummaries();
   const providerCount = getActiveProviders().length;
-  const upcomingReminderCount = getUpcomingReminderCount();
-  const overdueAlertCount = getOverdueAlertCount();
   const scheduledVisitCount = getScheduledVisitCount();
+  const overdueCarePlanCount = getOverdueCarePlanCount();
+  const recentVisitCount = getAllVisitHistoryEntries().slice(0, 5).length;
 
-  if (heroReminderCount) heroReminderCount.textContent = String(upcomingReminderCount);
+  if (heroReminderCount) heroReminderCount.textContent = String(getUpcomingReminderCount());
   if (heroProviderCount) heroProviderCount.textContent = String(providerCount);
-  if (homeReminderCount) homeReminderCount.textContent = String(upcomingReminderCount);
   if (homeProviderCount) homeProviderCount.textContent = String(providerCount);
-  if (homeOverdueCount) homeOverdueCount.textContent = String(overdueAlertCount);
+  if (homeOverdueCount) homeOverdueCount.textContent = String(overdueCarePlanCount);
   if (homeScheduledCount) homeScheduledCount.textContent = String(scheduledVisitCount);
+  if (homeRecentVisitsCount) homeRecentVisitsCount.textContent = String(recentVisitCount);
 
   renderHomeSections(summaries);
   renderReminderList(getActiveReminderItems(summaries));
@@ -2237,12 +2301,16 @@ function render() {
   renderCareTeam();
   renderAppointmentFilters();
   renderSelectOptions(false);
-  renderVisitTimelineList(summaries);
-  renderRecordView();
+  renderVisitsSubtabView();
+  renderGlobalTimeline();
   renderCarePlan();
   renderResults();
   renderResultsDashboard();
   updateNotificationButton();
+}
+
+function getOverdueCarePlanCount() {
+  return getCarePlanDashboardItems("overdue").length;
 }
 
 function dedupeDashboardItems(items) {
@@ -2357,7 +2425,11 @@ function renderVisitRecordCount(summaries) {
     return;
   }
   const stats = getVisitStats(summaries);
-  visitsRecordCount.textContent = `${stats.total} record${stats.total === 1 ? "" : "s"} • ${stats.scheduled} scheduled • ${stats.completed} completed`;
+  if (activeVisitsSubtab === "visit-logs") {
+    visitsRecordCount.textContent = `${stats.completed} completed visit log${stats.completed === 1 ? "" : "s"}`;
+    return;
+  }
+  visitsRecordCount.textContent = `${stats.scheduled} scheduled appointment${stats.scheduled === 1 ? "" : "s"}`;
 }
 
 function maskMemberId(value) {
@@ -2504,28 +2576,16 @@ function renderAppointmentFilters() {
     : "all";
 }
 
-function renderHomeSections(summaries) {
-  if (!homeTodayList || !homeUpcomingList || !homeOverdueList || !homeRecentLogsList) {
+function renderHomeSections() {
+  if (!homeRecentLogsList) {
     return;
   }
 
-  const todayItems = getTodayItems(summaries);
-  const upcomingItems = getUpcomingItems(summaries);
-  const overdueItems = getOverdueItems(summaries);
   const recentLogs = getAllVisitHistoryEntries()
     .slice()
     .sort((a, b) => compareOptionalDates(b.date, a.date))
-    .slice(0, 4);
+    .slice(0, 5);
 
-  homeTodayList.innerHTML = todayItems.length
-    ? todayItems.map(renderHomeSummaryCard).join("")
-    : renderEmptyStateRow("No visits or reminders scheduled for today.");
-  homeUpcomingList.innerHTML = upcomingItems.length
-    ? upcomingItems.map(renderHomeSummaryCard).join("")
-    : renderEmptyStateRow("No upcoming reminders found.");
-  homeOverdueList.innerHTML = overdueItems.length
-    ? overdueItems.map(renderHomeSummaryCard).join("")
-    : renderEmptyStateRow("No overdue items right now.");
   homeRecentLogsList.innerHTML = recentLogs.length
     ? recentLogs.map(renderHomeVisitLogCard).join("")
     : renderEmptyStateRow("No recent visit logs yet.");
@@ -2574,80 +2634,462 @@ function renderHomeVisitLogCard(entry) {
   `;
 }
 
-function renderVisitTimelineList(summaries) {
-  if (!visitTimelineList) return;
-  if (!visitTimelineList) {
+function buildGlobalTimelineEvents() {
+  const events = [];
+
+  getDisplayableAppointments().forEach((appointment) => {
+    const date = appointment.appointmentDate || appointment.nextRecommendedVisit;
+    if (!isValidIsoDate(date)) {
+      return;
+    }
+    events.push({
+      id: appointment.id,
+      type: "appointment",
+      date,
+      title: appointment.doctor || appointment.specialty || "Appointment",
+      provider: appointment.doctor || "",
+      clinic: appointment.clinic || extractClinicName(appointment.place) || "",
+      subtitle: appointment.reasonForVisit || appointment.appointmentStatus || "",
+      linkedItems: [],
+      raw: appointment,
+    });
+  });
+
+  normalizeVisitLogs(state.visitLogs).forEach((log) => {
+    if (!isValidIsoDate(log.date)) {
+      return;
+    }
+    const linkedCarePlans = getVisitLogLinkedCarePlanItems(log.id).map((item) => item.name);
+    const linkedResults = getResultsForVisitLog(log.id).map((result) => result.testName);
+    events.push({
+      id: log.id,
+      type: "visit",
+      date: log.date,
+      title: log.provider || log.specialty || "Visit",
+      provider: log.provider || "",
+      clinic: log.clinic || "",
+      subtitle: log.reason || log.summary || log.status || "",
+      linkedItems: [...linkedCarePlans, ...linkedResults],
+      raw: log,
+    });
+  });
+
+  normalizeResults(state.results).forEach((result) => {
+    const date = getResultSortDate(result);
+    if (!isValidIsoDate(date)) {
+      return;
+    }
+    const isTreatment = result.status === "Treated" || cleanText(result.treatment);
+    events.push({
+      id: result.id,
+      type: isTreatment ? "treatment" : "result",
+      date,
+      title: result.testName,
+      provider: result.provider || "",
+      clinic: result.clinic || "",
+      subtitle: result.details || result.status || "",
+      linkedItems: getResultLinkedCarePlanNames(result),
+      raw: result,
+    });
+  });
+
+  (state.carePlan || []).forEach((item) => {
+    const lastCompleted = getCarePlanDerivedLastCompleted(item);
+    if (!isValidIsoDate(lastCompleted)) {
+      return;
+    }
+    events.push({
+      id: `${item.id}-completed-${lastCompleted}`,
+      type: "care-plan",
+      date: lastCompleted,
+      title: item.name,
+      provider: getCarePlanProviderDisplayName(item),
+      clinic: item.place || "",
+      subtitle: "Care plan completed",
+      linkedItems: getCarePlanConnectedLogs(item).slice(0, 3).map((log) => formatDate(log.date)),
+      raw: item,
+    });
+  });
+
+  return events.sort((a, b) => compareOptionalDates(b.date, a.date));
+}
+
+function getResultLinkedCarePlanNames(result) {
+  return (state.carePlan || [])
+    .filter((item) => normalizeStringArray(result.linkedCarePlanIds).includes(item.id))
+    .map((item) => item.name);
+}
+
+function getTimelineTypeLabel(type) {
+  const labels = {
+    appointment: "Appointment",
+    visit: "Visit",
+    result: "Result",
+    treatment: "Treatment",
+    "care-plan": "Care Plan",
+  };
+  return labels[type] || "Event";
+}
+
+function getTimelineTypeClass(type) {
+  if (type === "appointment") return "scheduled";
+  if (type === "visit") return "ok";
+  if (type === "result") return "soon";
+  if (type === "treatment") return "completed";
+  return "on-track";
+}
+
+function renderGlobalTimeline() {
+  if (!globalTimelineList) {
     return;
   }
 
-  const records = getFilteredSortedRecords(summaries);
-  const timeline = records
-    .filter((record) => getRecordDate(record))
-    .sort((a, b) => compareOptionalDates(getRecordDate(a), getRecordDate(b)));
+  const query = cleanText(timelineSearchInput?.value).toLowerCase();
+  let events = buildGlobalTimelineEvents().filter((event) => {
+    if (activeTimelineFilter !== "all" && event.type !== activeTimelineFilter) {
+      return false;
+    }
+    if (!query) {
+      return true;
+    }
+    const haystack = [event.title, event.provider, event.clinic, event.subtitle, ...(event.linkedItems || [])]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
 
-  if (!timeline.length) {
-    visitTimelineList.innerHTML = `<p class="muted">No timeline entries match the current filters.</p>`;
+  if (!events.length) {
+    globalTimelineList.classList.add("empty-state");
+    globalTimelineList.innerHTML = `<p class="muted">No timeline events match this view.</p>`;
     return;
   }
 
-  const grouped = timeline.reduce((acc, record) => {
-    const dateKey = formatDate(getRecordDate(record));
+  globalTimelineList.classList.remove("empty-state");
+  const grouped = events.reduce((acc, event) => {
+    const dateKey = formatDate(event.date);
     acc[dateKey] = acc[dateKey] || [];
-    acc[dateKey].push(record);
+    acc[dateKey].push(event);
     return acc;
   }, {});
 
-  visitTimelineList.innerHTML = Object.keys(grouped)
-    .sort((a, b) => compareOptionalDates(a, b))
+  globalTimelineList.innerHTML = Object.keys(grouped)
+    .sort((a, b) => compareOptionalDates(b, a))
     .map(
       (dateKey) => `
         <div class="timeline-day">
           <h4>${escapeHtml(dateKey)}</h4>
-          ${grouped[dateKey]
-            .map((record) => renderTimelineEntry(record))
-            .join("")}
+          ${grouped[dateKey].map((event) => renderGlobalTimelineCard(event)).join("")}
         </div>
       `
     )
     .join("");
 }
 
-function renderTimelineEntry(record) {
-  const item = record.item;
-  const entryLabel = record.type === "appointment" ? "Appointment" : "Visit Log";
-  const dateLabel =
-    record.type === "appointment"
-      ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)
-      : formatDate(item.date);
-
+function renderGlobalTimelineCard(event) {
+  const linkedLine = event.linkedItems?.length
+    ? `<p class="timeline-linked-items meta">Linked: ${escapeHtml(event.linkedItems.slice(0, 4).join(" • "))}</p>`
+    : "";
   return `
-    <article class="record-card timeline-card">
+    <article class="record-card timeline-card global-timeline-card">
       <div class="record-card-head">
         <div class="record-card-body">
-          <span class="pill ${record.type === "appointment" ? "scheduled" : "ok"} badge">${entryLabel}</span>
-          <strong class="record-card-provider">${escapeHtml(getRecordTitle(item))}</strong>
-          <span class="record-card-meta">${escapeHtml(dateLabel)} • ${escapeHtml(record.type === "appointment" ? item.appointmentStatus || "Planned" : item.status || "Completed")}</span>
+          <span class="pill ${getTimelineTypeClass(event.type)} badge">${escapeHtml(getTimelineTypeLabel(event.type))}</span>
+          <strong class="record-card-provider">${escapeHtml(event.title)}</strong>
+          <span class="record-card-meta">${escapeHtml(event.provider || "No provider")}${event.clinic ? ` • ${escapeHtml(event.clinic)}` : ""}</span>
+          <p class="record-card-reason">${escapeHtml(event.subtitle || "No details saved")}</p>
+          ${linkedLine}
         </div>
-        ${record.type === "appointment" ? statusPill(item) : `<span class="pill ${visitLogStatusClass(item.status)}">${escapeHtml(item.status || "Completed")}</span>`}
+      </div>
+      <div class="record-card-actions">
+        <button class="button-secondary" type="button" data-timeline-action="view" data-timeline-type="${escapeHtml(event.type)}" data-timeline-id="${escapeHtml(event.id)}">View</button>
+        <button class="button-secondary" type="button" data-timeline-action="edit" data-timeline-type="${escapeHtml(event.type)}" data-timeline-id="${escapeHtml(event.id)}">Edit</button>
       </div>
     </article>
   `;
 }
 
-function renderRecordView() {
-  if (!visitTimelineContainer || !appointmentList) return;
-  if (!visitTimelineContainer || !appointmentList) {
+function handleGlobalTimelineClick(event) {
+  const button = event.target.closest("[data-timeline-action]");
+  if (!button) {
     return;
   }
-  const isTimeline = activeRecordView === "timeline";
-  visitTimelineContainer.classList.toggle("is-hidden", !isTimeline);
-  appointmentList.classList.toggle("is-hidden", isTimeline);
+
+  const action = button.dataset.timelineAction;
+  const type = button.dataset.timelineType;
+  const rawId = button.dataset.timelineId;
+  const eventRecord = buildGlobalTimelineEvents().find((item) => item.id === rawId && item.type === type);
+  if (!eventRecord) {
+    return;
+  }
+
+  if (type === "appointment") {
+    switchTab("visits");
+    if (action === "edit") {
+      loadAppointmentIntoForm(eventRecord.raw.id);
+      showVisitsView("appointment-form");
+    } else {
+      showVisitsList();
+      setVisitsSubtab("appointments");
+    }
+    return;
+  }
+
+  if (type === "visit") {
+    switchTab("visits");
+    showVisitsView("visit-log-form");
+    setAddEditMode("visit-log");
+    loadVisitLogIntoEditor(eventRecord.raw.id);
+    return;
+  }
+
+  if (type === "result" || type === "treatment") {
+    switchTab("results");
+    if (action === "edit") {
+      openResultsForm(eventRecord.raw.id);
+    } else {
+      showResultsList();
+    }
+    return;
+  }
+
+  if (type === "care-plan") {
+    switchTab("carePlan");
+    if (action === "edit") {
+      openCarePlanForm(eventRecord.raw.id);
+    }
+  }
 }
 
-function setRecordView(view) {
-  activeRecordView = view;
-  recordViewButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.recordView === view));
-  renderRecordView();
+function openUploadRecordModal() {
+  if (!uploadRecordModal) {
+    return;
+  }
+  setUploadRecordModalStatus("");
+  uploadRecordModal.classList.remove("is-hidden");
+}
+
+function closeUploadRecordModal() {
+  if (!uploadRecordModal) {
+    return;
+  }
+  setUploadRecordModalStatus("");
+  uploadRecordModal.classList.add("is-hidden");
+  if (universalUploadInput) {
+    universalUploadInput.value = "";
+  }
+}
+
+function setUploadRecordModalStatus(message, { isError = false } = {}) {
+  if (!uploadRecordModalStatus) {
+    return;
+  }
+  uploadRecordModalStatus.textContent = message;
+  uploadRecordModalStatus.classList.toggle("is-hidden", !message);
+  uploadRecordModalStatus.style.color = isError ? "#9b1c1c" : "";
+}
+
+async function handleUniversalRecordUpload(event) {
+  const file = event.target.files?.[0];
+  const recordType = cleanText(uploadRecordTypeSelect?.value) || "other";
+  if (!file) {
+    return;
+  }
+
+  setUploadRecordModalStatus("Reading uploaded record…");
+  try {
+    await routeUploadedRecord(file, recordType);
+    closeUploadRecordModal();
+  } catch (error) {
+    setUploadRecordModalStatus(error.message || "Could not auto-fill this record. You can still enter it manually.", {
+      isError: true,
+    });
+  } finally {
+    if (universalUploadInput) {
+      universalUploadInput.value = "";
+    }
+  }
+}
+
+async function routeUploadedRecord(file, recordType) {
+  const extractedText = await extractTextFromUploadedFile(file);
+  const uploadMeta = {
+    sourceFileName: file.name,
+    sourceType: "uploaded-record",
+    sourceExtractedAt: new Date().toISOString(),
+    extractedText,
+  };
+
+  if (recordType === "therapy") {
+    await processTherapyRecordUpload(extractedText, uploadMeta);
+    return;
+  }
+  if (recordType === "lab" || recordType === "sti") {
+    processResultRecordUpload(extractedText, uploadMeta, recordType);
+    return;
+  }
+  if (recordType === "appointment") {
+    processAppointmentRecordUpload(extractedText, uploadMeta);
+    return;
+  }
+
+  await processGenericVisitRecordUpload(extractedText, uploadMeta, recordType);
+}
+
+async function processTherapyRecordUpload(extractedText, uploadMeta) {
+  const parsedRecord = parseTherapyRecord(extractedText);
+  if (!parsedRecord || (!parsedRecord.provider && !parsedRecord.date && !parsedRecord.clinic)) {
+    throw new Error("Could not auto-fill this record. You can still enter it manually.");
+  }
+  await openParsedVisitLogReview(parsedRecord, uploadMeta);
+}
+
+async function processGenericVisitRecordUpload(extractedText, uploadMeta, recordType) {
+  const parsedRecord = parseGenericMedicalRecord(extractedText, recordType);
+  if (!parsedRecord || (!parsedRecord.provider && !parsedRecord.date && !parsedRecord.clinic)) {
+    throw new Error("Could not auto-fill this record. You can still enter it manually.");
+  }
+  await openParsedVisitLogReview(parsedRecord, uploadMeta);
+}
+
+function parseGenericMedicalRecord(text, recordType = "other") {
+  const therapyParsed = parseTherapyRecord(text);
+  if (therapyParsed) {
+    return therapyParsed;
+  }
+
+  const provider = extractRecordLabeledValue(text, ["Provider", "Clinician", "Doctor", "Seen by"]);
+  const clinic = extractRecordLabeledValue(text, ["Clinic", "Platform", "Location", "Facility"]);
+  const date = parseFlexibleDateToIso(
+    extractRecordLabeledValue(text, ["Visit date", "Date of service", "Appointment date", "Date"])
+  );
+  const reason = extractReasonForVisit(text) || extractRecordLabeledValue(text, ["Reason", "Chief complaint"]);
+  const summary =
+    extractRecordSection(text, ["Summary", "Assessment", "Plan", "Visit summary"], ["Prescriptions", "Medications"]) ||
+    extractRecordLabeledValue(text, ["Summary", "Assessment"]);
+  const specialty =
+    extractRecordLabeledValue(text, ["Specialty", "Department"]) ||
+    (recordType === "pcp" ? "Primary care" : "");
+
+  if (!provider && !clinic && !date) {
+    return null;
+  }
+
+  return {
+    provider,
+    clinic,
+    specialty,
+    date,
+    startTime: parseFlexibleTimeTo24Hour(extractRecordLabeledValue(text, ["Start time", "Start Time"])),
+    endTime: parseFlexibleTimeTo24Hour(extractRecordLabeledValue(text, ["End time", "End Time"])),
+    status: "Completed",
+    reason,
+    carePlanText: extractRecordSection(text, ["Care Plan", "Plan"], ["Prescriptions"]),
+    prescriptionsText: extractRecordLabeledValue(text, ["Prescriptions", "Medications"]),
+    sessionThemes: extractTherapyThemes(text, summary, reason),
+    rawText: text,
+  };
+}
+
+function parseResultRecord(text, recordType = "lab") {
+  const testName =
+    extractRecordLabeledValue(text, ["Test", "Test name", "Result", "Screening"]) ||
+    (recordType === "sti" ? "STI screening" : "Lab result");
+  const details = extractRecordSection(text, ["Details", "Results", "Findings", "Interpretation"], ["Treatment", "Plan"]);
+  const statusRaw = extractRecordLabeledValue(text, ["Status", "Result status", "Interpretation"]).toLowerCase();
+  let status = "Pending";
+  if (/positive|detected|abnormal|reactive/.test(statusRaw) || /positive|detected|abnormal|reactive/i.test(text)) {
+    status = /negative|normal|not detected/i.test(statusRaw) && !/positive|detected|abnormal/i.test(statusRaw) ? "Negative" : "Positive";
+  } else if (/negative|normal|not detected/.test(statusRaw)) {
+    status = "Negative";
+  } else if (/treated|completed treatment/.test(statusRaw)) {
+    status = "Treated";
+  }
+
+  return {
+    testName,
+    category: recordType === "sti" ? "STI / STD" : "Lab",
+    status,
+    details: details || extractRecordLabeledValue(text, ["Details", "Comments"]),
+    provider: extractRecordLabeledValue(text, ["Provider", "Ordering provider", "Clinician"]),
+    clinic: extractRecordLabeledValue(text, ["Clinic", "Lab", "Facility"]),
+    orderedDate: parseFlexibleDateToIso(extractRecordLabeledValue(text, ["Ordered", "Order date", "Collection date"])),
+    receivedDate: parseFlexibleDateToIso(
+      extractRecordLabeledValue(text, ["Received", "Report date", "Result date", "Date"])
+    ),
+    treatment: extractRecordLabeledValue(text, ["Treatment", "Plan"]),
+  };
+}
+
+function processResultRecordUpload(extractedText, uploadMeta, recordType) {
+  const parsed = parseResultRecord(extractedText, recordType);
+  switchTab("results");
+  openResultsForm();
+  if (!resultsForm) {
+    throw new Error("Results form is unavailable.");
+  }
+  resultsForm.elements.testName.value = parsed.testName || "";
+  resultsForm.elements.category.value = parsed.category || "Lab";
+  resultsForm.elements.status.value = RESULT_STATUSES.includes(parsed.status) ? parsed.status : "Pending";
+  resultsForm.elements.details.value = parsed.details || "";
+  resultsForm.elements.provider.value = parsed.provider || "";
+  resultsForm.elements.clinic.value = parsed.clinic || "";
+  resultsForm.elements.orderedDate.value = parsed.orderedDate || todayString();
+  resultsForm.elements.receivedDate.value = parsed.receivedDate || parsed.orderedDate || todayString();
+  resultsForm.elements.treatment.value = parsed.treatment || "";
+  pendingTherapyUploadMeta = {
+    sourceFileName: uploadMeta.sourceFileName,
+    sourceType: uploadMeta.sourceType,
+    sourceExtractedAt: uploadMeta.sourceExtractedAt,
+    sourceExtractedText: truncateExtractedText(uploadMeta.extractedText),
+  };
+}
+
+function processAppointmentRecordUpload(extractedText, uploadMeta) {
+  const parsed = parseGenericMedicalRecord(extractedText, "appointment");
+  switchTab("visits");
+  openAppointmentForm();
+  if (!appointmentForm || !parsed) {
+    throw new Error("Could not auto-fill this record. You can still enter it manually.");
+  }
+  appointmentForm.elements.clinic.value = parsed.clinic || "";
+  setSelectWithCustomValue(specialtySelect, appointmentForm.elements.customSpecialty, parsed.specialty || "");
+  setSelectWithCustomValue(reasonSelect, appointmentForm.elements.customReasonForVisit, parsed.reason || "");
+  appointmentForm.elements.appointmentDate.value = parsed.date || todayString();
+  appointmentForm.elements.appointmentTime.value = parsed.startTime || "";
+  appointmentForm.elements.appointmentStatus.value = "Scheduled";
+  if (parsed.provider) {
+    const matched = matchProviderFromRecordName(parsed.provider);
+    if (matched) {
+      providerSelect.value = `${PROVIDER_OPTION_PREFIX}${matched.id}`;
+    } else {
+      setSelectWithCustomValue(providerSelect, appointmentForm.elements.customDoctor, parsed.provider);
+    }
+  }
+  pendingTherapyUploadMeta = {
+    sourceFileName: uploadMeta.sourceFileName,
+    sourceType: uploadMeta.sourceType,
+    sourceExtractedAt: uploadMeta.sourceExtractedAt,
+    sourceExtractedText: truncateExtractedText(uploadMeta.extractedText),
+  };
+  syncCustomFieldVisibility();
+}
+
+async function openParsedVisitLogReview(parsedRecord, uploadMeta) {
+  let existingLogId = editingVisitLogId || cleanText(visitLogForm?.elements.visitLogId?.value) || "";
+  const duplicate = detectDuplicateVisitLog(parsedRecord, state.visitLogs);
+  if (duplicate && duplicate.id !== existingLogId) {
+    const shouldUpdate = window.confirm("This looks like an existing visit. Update existing log?");
+    if (shouldUpdate) {
+      existingLogId = duplicate.id;
+      uploadMeta.isDuplicateUpdate = true;
+    }
+  }
+
+  const visitLog = buildTherapyVisitLog(parsedRecord, { ...uploadMeta, existingLogId });
+  therapyUploadReviewState = { visitLog, uploadMeta, parsedRecord };
+  switchTab("visits");
+  showVisitsView("visit-log-form");
+  openVisitLogUploadReview(visitLog, uploadMeta);
 }
 
 function filterAppointmentSummaries(summaries) {
@@ -2697,7 +3139,7 @@ function renderRecordsList(summaries) {
 }
 
 function getFilteredSortedRecords(summaries) {
-  const type = recordTypeFilter.value || "all";
+  const type = activeVisitsSubtab === "visit-logs" ? "visit-logs" : "appointments";
   const appointmentRecords =
     type === "visit-logs" ? [] : filterAppointmentSummaries(summaries).map((item) => ({ type: "appointment", item }));
   const visitLogRecords =
@@ -2706,6 +3148,25 @@ function getFilteredSortedRecords(summaries) {
       : filterRecordVisitLogs(getAllVisitHistoryEntries()).map((item) => ({ type: "visit-log", item }));
 
   return appointmentRecords.concat(visitLogRecords).sort(compareRecords);
+}
+
+function setVisitsSubtab(subtab) {
+  activeVisitsSubtab = subtab === "visit-logs" ? "visit-logs" : "appointments";
+  if (recordTypeFilter) {
+    recordTypeFilter.value = activeVisitsSubtab === "appointments" ? "appointments" : "visit-logs";
+  }
+  visitsSubtabButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.visitsSubtab === activeVisitsSubtab);
+  });
+  renderVisitsSubtabView();
+  renderAppointmentLists(getAppointmentSummaries());
+  renderVisitRecordCount(getAppointmentSummaries());
+}
+
+function renderVisitsSubtabView() {
+  if (visitHistoryToolbar) {
+    visitHistoryToolbar.classList.toggle("is-hidden", activeVisitsSubtab !== "visit-logs");
+  }
 }
 
 function filterRecordVisitLogs(entries) {
@@ -2856,10 +3317,21 @@ function renderCareTeam() {
     : renderEmptyStateRow("No care team entries yet. Add a provider using the form above.");
 }
 
+function getProviderVisitLogCount(provider) {
+  if (!provider) {
+    return 0;
+  }
+  const providerKey = normalizeLookupKey(getProviderRecordName(provider));
+  return normalizeVisitLogs(state.visitLogs).filter(
+    (log) => log.providerId === provider.id || normalizeLookupKey(log.provider) === providerKey
+  ).length;
+}
+
 function renderCareTeamProviderCard(provider) {
   const notes = cleanText(provider.notes);
   const address = cleanText(provider.address);
   const portalLink = cleanText(provider.portalLink);
+  const linkedVisitCount = getProviderVisitLogCount(provider);
   return `
     <article class="record-card provider-card" data-provider-card="${escapeHtml(provider.id)}">
       <div class="provider-card-head">
@@ -2869,6 +3341,7 @@ function renderCareTeamProviderCard(provider) {
         </div>
       </div>
       <p class="provider-card-clinic">${escapeHtml(provider.clinic || "No clinic saved")}</p>
+      <p class="meta">${linkedVisitCount} linked visit${linkedVisitCount === 1 ? "" : "s"}</p>
       <div class="provider-info-row">
         <span><strong>Phone</strong>${escapeHtml(provider.phone || "Not saved")}</span>
         <span><strong>Address</strong>${escapeHtml(address || "Not saved")}</span>
@@ -4062,6 +4535,9 @@ function switchScreen(target, { updateHash = true, scrollToTop = true } = {}) {
   if (target === "appointments" && previousScreen !== "appointments") {
     showVisitsList();
   }
+  if (target === "timeline" && previousScreen !== "timeline") {
+    renderGlobalTimeline();
+  }
   if (target === "care-plan" && previousScreen !== "care-plan") {
     showCarePlanList();
   }
@@ -4168,35 +4644,77 @@ function normalizeState(saved) {
   const normalizedAppointments = normalizeAppointments(Array.isArray(saved?.appointments) ? saved.appointments : []);
   const normalizedVisitLogs = normalizeVisitLogs(Array.isArray(saved?.visitLogs) ? saved.visitLogs : []);
   const migrated = migrateVisitLogsAndCleanupAppointments(normalizedAppointments, normalizedVisitLogs);
+  const results = normalizeResults(Array.isArray(saved?.results) ? saved.results : []);
+  const providers = Array.isArray(saved?.providers)
+    ? saved.providers.map(normalizeProvider).filter(Boolean)
+    : [];
+  const carePlan = Array.isArray(saved?.carePlan)
+    ? saved.carePlan.map((item) => normalizeCarePlanItem(item, providers)).filter(Boolean)
+    : [];
+  const visitLogs = migrated.visitLogs.map((log) => normalizeVisitLog(log));
+
+  results.forEach((result) => {
+    if (result.linkedVisitLogId) {
+      const log = visitLogs.find((entry) => entry.id === result.linkedVisitLogId);
+      if (log) {
+        log.linkedResultIds = [...new Set([...normalizeStringArray(log.linkedResultIds), result.id])];
+      }
+    }
+    normalizeStringArray(result.linkedCarePlanIds).forEach((carePlanId) => {
+      const item = carePlan.find((entry) => entry.id === carePlanId);
+      if (item) {
+        item.linkedResultIds = [...new Set([...normalizeStringArray(item.linkedResultIds), result.id])];
+      }
+    });
+  });
 
   return {
     ...emptyState,
     appointments: migrated.appointments,
-    visitLogs: migrated.visitLogs,
-    results: normalizeResults(Array.isArray(saved?.results) ? saved.results : []),
-    providers: Array.isArray(saved?.providers)
-      ? saved.providers.map(normalizeProvider).filter(Boolean)
-      : [],
+    visitLogs,
+    results,
+    providers,
     insurance: saved?.insurance && typeof saved.insurance === "object" ? saved.insurance : {},
     profile: saved?.profile && typeof saved.profile === "object" ? saved.profile : {},
     deletedSeedKeys: Array.isArray(saved?.deletedSeedKeys)
       ? saved.deletedSeedKeys.map((item) => cleanText(item)).filter(Boolean)
       : [],
-    carePlan: Array.isArray(saved?.carePlan)
-      ? saved.carePlan
-          .map((item) =>
-            normalizeCarePlanItem(
-              item,
-              Array.isArray(saved?.providers) ? saved.providers.map(normalizeProvider).filter(Boolean) : []
-            )
-          )
-          .filter(Boolean)
-      : [],
+    carePlan,
     deletedCarePlanSeedKeys: Array.isArray(saved?.deletedCarePlanSeedKeys)
       ? saved.deletedCarePlanSeedKeys.map((item) => cleanText(item)).filter(Boolean)
       : [],
     lastNotificationDate: cleanText(saved?.lastNotificationDate),
   };
+}
+
+function syncResultLinks(result, { skipPersist = false } = {}) {
+  if (!result?.id) {
+    return;
+  }
+
+  state.visitLogs = state.visitLogs.map((log) => {
+    const linkedIds = new Set(normalizeStringArray(log.linkedResultIds));
+    if (result.linkedVisitLogId === log.id) {
+      linkedIds.add(result.id);
+    } else {
+      linkedIds.delete(result.id);
+    }
+    return normalizeVisitLog({ ...log, linkedResultIds: [...linkedIds] });
+  });
+
+  state.carePlan = (state.carePlan || []).map((item) => {
+    const linkedIds = new Set(normalizeStringArray(item.linkedResultIds));
+    if (normalizeStringArray(result.linkedCarePlanIds).includes(item.id)) {
+      linkedIds.add(result.id);
+    } else {
+      linkedIds.delete(result.id);
+    }
+    return normalizeCarePlanItem({ ...item, linkedResultIds: [...linkedIds] });
+  });
+
+  if (!skipPersist) {
+    persist();
+  }
 }
 
 function normalizeProvider(provider) {
@@ -4477,26 +4995,6 @@ function renderResultsDashboard() {
   const counts = getResultsDashboardCounts();
   if (homePendingResultsCount) homePendingResultsCount.textContent = String(counts.pending);
   if (homeAbnormalResultsCount) homeAbnormalResultsCount.textContent = String(counts.abnormal);
-  if (homeResultsFollowUpCount) homeResultsFollowUpCount.textContent = String(counts.followUp);
-  if (homeTreatmentCompletedCount) homeTreatmentCompletedCount.textContent = String(counts.treated);
-
-  if (!homeResultsAttentionList) {
-    return;
-  }
-
-  const attention = normalizeResults(state.results)
-    .filter(
-      (result) =>
-        result.status === "Pending" ||
-        result.status === "Abnormal" ||
-        result.status === "Positive" ||
-        result.status === "Needs follow-up"
-    )
-    .slice(0, 4);
-
-  homeResultsAttentionList.innerHTML = attention.length
-    ? attention.map(renderHomeResultCard).join("")
-    : renderEmptyStateRow("No results need attention right now.");
 }
 
 function renderHomeResultCard(result) {
@@ -4888,6 +5386,7 @@ function handleResultsSubmit(event) {
     state.results.unshift(nextResult);
   }
 
+  syncResultLinks(nextResult);
   persist();
   showResultsList();
   render();
@@ -4980,6 +5479,7 @@ function normalizeCarePlanItem(item, providers = state.providers || []) {
     providerName,
     provider: providerName,
     linkedVisitLogIds: normalizeStringArray(item?.linkedVisitLogIds),
+    linkedResultIds: normalizeStringArray(item?.linkedResultIds),
     linkedProviderIds: normalizeStringArray(item?.linkedProviderIds),
     providerMode: item?.providerMode === "multiple" ? "multiple" : "single",
     place: cleanText(item.place),
@@ -6015,7 +6515,13 @@ function groupCarePlanByCategory(items) {
     }
     groups.get(category).push(item);
   });
-  return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return [...groups.entries()].sort((a, b) => {
+    const aIndex = CARE_PLAN_CATEGORY_ORDER.indexOf(a[0]);
+    const bIndex = CARE_PLAN_CATEGORY_ORDER.indexOf(b[0]);
+    const aRank = aIndex === -1 ? 999 : aIndex;
+    const bRank = bIndex === -1 ? 999 : bIndex;
+    return aRank - bRank || a[0].localeCompare(b[0]);
+  });
 }
 
 function renderCarePlan() {
@@ -6057,6 +6563,7 @@ function renderCarePlanCard(item) {
     ? `<p class="care-plan-notes">${escapeHtml(item.notes)}</p>`
     : "";
   const connectedLogs = getCarePlanConnectedLogs(item);
+  const linkedResults = getCarePlanLinkedResults(item);
   const providerDetails = getCarePlanProviderDisplayDetails(item);
   const providerDetailsBlock = providerDetails
     ? `<ul class="care-plan-provider-list">${providerDetails
@@ -6077,6 +6584,8 @@ function renderCarePlanCard(item) {
       <div class="care-plan-info-grid compact-grid">
         <span><strong>Next due</strong>${escapeHtml(formatCarePlanNextDue(item))}</span>
         <span><strong>Last completed</strong>${formatDate(getCarePlanDerivedLastCompleted(item))}</span>
+        <span><strong>Linked visits</strong>${connectedLogs.length}</span>
+        <span><strong>Linked results</strong>${linkedResults.length}</span>
         <span><strong>Scheduled</strong>${escapeHtml(scheduledLine)}</span>
         <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}${providerDetailsBlock}</span>
       </div>
@@ -7578,32 +8087,13 @@ async function handleVisitLogRecordUpload(event) {
   clearVisitLogFormError();
 
   try {
-    const extractedText = await extractTextFromUploadedFile(file);
-    const parsedRecord = parseTherapyRecord(extractedText);
-    if (!parsedRecord || (!parsedRecord.provider && !parsedRecord.date && !parsedRecord.clinic)) {
-      throw new Error("Could not auto-fill this record. You can still enter it manually.");
-    }
-
     const uploadMeta = {
       sourceFileName: file.name,
       sourceType: "uploaded-record",
       sourceExtractedAt: new Date().toISOString(),
-      extractedText,
     };
-
-    let existingLogId = editingVisitLogId || cleanText(visitLogForm.elements.visitLogId.value) || "";
-    const duplicate = detectDuplicateVisitLog(parsedRecord, state.visitLogs);
-    if (duplicate && duplicate.id !== existingLogId) {
-      const shouldUpdate = window.confirm("This looks like an existing visit. Update existing log?");
-      if (shouldUpdate) {
-        existingLogId = duplicate.id;
-        uploadMeta.isDuplicateUpdate = true;
-      }
-    }
-
-    const visitLog = buildTherapyVisitLog(parsedRecord, { ...uploadMeta, existingLogId });
-    therapyUploadReviewState = { visitLog, uploadMeta, parsedRecord };
-    openVisitLogUploadReview(visitLog, uploadMeta);
+    const extractedText = await extractTextFromUploadedFile(file);
+    await processTherapyRecordUpload(extractedText, { ...uploadMeta, extractedText });
     setVisitLogUploadStatus("");
   } catch (error) {
     setVisitLogUploadStatus(error.message || "Could not auto-fill this record. You can still enter it manually.", {
@@ -7654,6 +8144,7 @@ function normalizeVisitLog(log) {
     providerId: cleanText(log.providerId),
     linkedAppointmentId: cleanText(log.linkedAppointmentId),
     linkedCarePlanIds: normalizeStringArray(log.linkedCarePlanIds),
+    linkedResultIds: normalizeStringArray(log.linkedResultIds),
     date: cleanText(log.date),
     startTime: cleanText(log.startTime),
     endTime: cleanText(log.endTime),

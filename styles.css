@@ -1699,3 +1699,54 @@ button {
     flex: 0 0 auto;
   }
 }
+
+.dashboard-summary-grid {
+  margin-top: 12px;
+}
+
+.visits-subtab-row,
+.timeline-filter-row {
+  margin: 10px 0 12px;
+}
+
+.upload-record-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(24, 20, 16, 0.42);
+}
+
+.upload-record-modal.is-hidden {
+  display: none;
+}
+
+.upload-record-modal-panel {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.upload-record-modal-actions {
+  margin-top: 12px;
+}
+
+.upload-record-modal-status {
+  margin: 10px 0 0;
+}
+
+.upload-record-modal-status.is-hidden {
+  display: none;
+}
+
+.visit-history-toolbar.is-hidden {
+  display: none;
+}
+
+.global-timeline-card .timeline-linked-items {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
