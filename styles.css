@@ -879,6 +879,25 @@ textarea::placeholder {
 
 .visit-log-actions {
   justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.visit-log-form-error {
+  flex: 1 1 100%;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: #fff1f0;
+  border: 1px solid #f5c2c0;
+  color: #9b1c1c;
+  font-size: 0.92rem;
+}
+
+.visit-log-form-error.is-hidden {
+  display: none;
+}
+  justify-content: flex-start;
   gap: 12px;
 }
 
