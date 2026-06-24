@@ -712,6 +712,7 @@ const carePlanConnectedVisitLogs = document.querySelector("#carePlanConnectedVis
 const carePlanAvailableVisitLogs = document.querySelector("#carePlanAvailableVisitLogs");
 const carePlanVisitLogSearch = document.querySelector("#carePlanVisitLogSearch");
 const carePlanAutoLinkButton = document.querySelector("#carePlanAutoLinkButton");
+const carePlanFormLinkedResults = document.querySelector("#carePlanFormLinkedResults");
 const visitLogCarePlanChecklist = document.querySelector("#visitLogCarePlanChecklist");
 const visitLogCarePlanHint = document.querySelector("#visitLogCarePlanHint");
 const visitLogResultsEditor = document.querySelector("#visitLogResultsEditor");
@@ -3005,6 +3006,18 @@ function parseResultRecord(text, recordType = "lab") {
     status = "Treated";
   }
 
+  const orderedDate = parseFlexibleDateToIso(
+    extractRecordLabeledValue(text, ["Ordered", "Order date", "Collection date"])
+  );
+  const resultDate = parseFlexibleDateToIso(
+    extractRecordLabeledValue(text, ["Result date", "Date of result", "Report date"])
+  );
+  const receivedDate = parseFlexibleDateToIso(
+    extractRecordLabeledValue(text, ["Received date", "Received", "Date received"])
+  );
+  const genericDate = parseFlexibleDateToIso(extractRecordLabeledValue(text, ["Date"]));
+  const resolvedResultDate = resultDate || (!resultDate && receivedDate ? receivedDate : "") || genericDate;
+
   return {
     testName,
     category: recordType === "sti" ? "STI / STD" : "Lab",
@@ -3012,10 +3025,9 @@ function parseResultRecord(text, recordType = "lab") {
     details: details || extractRecordLabeledValue(text, ["Details", "Comments"]),
     provider: extractRecordLabeledValue(text, ["Provider", "Ordering provider", "Clinician"]),
     clinic: extractRecordLabeledValue(text, ["Clinic", "Lab", "Facility"]),
-    orderedDate: parseFlexibleDateToIso(extractRecordLabeledValue(text, ["Ordered", "Order date", "Collection date"])),
-    receivedDate: parseFlexibleDateToIso(
-      extractRecordLabeledValue(text, ["Received", "Report date", "Result date", "Date"])
-    ),
+    orderedDate,
+    resultDate: resolvedResultDate,
+    receivedDate: receivedDate || "",
     treatment: extractRecordLabeledValue(text, ["Treatment", "Plan"]),
   };
 }
@@ -3034,7 +3046,7 @@ function processResultRecordUpload(extractedText, uploadMeta, recordType) {
   resultsForm.elements.provider.value = parsed.provider || "";
   resultsForm.elements.clinic.value = parsed.clinic || "";
   resultsForm.elements.orderedDate.value = parsed.orderedDate || todayString();
-  resultsForm.elements.receivedDate.value = parsed.receivedDate || parsed.orderedDate || todayString();
+  resultsForm.elements.resultDate.value = parsed.resultDate || parsed.orderedDate || todayString();
   resultsForm.elements.treatment.value = parsed.treatment || "";
   pendingTherapyUploadMeta = {
     sourceFileName: uploadMeta.sourceFileName,
@@ -5049,8 +5061,8 @@ function renderResultCard(result) {
         <span class="pill ${resultStatusClass(result.status)}">${escapeHtml(result.status)}</span>
       </div>
       <div class="result-info-grid compact-grid">
+        <span><strong>Result date</strong>${formatDate(result.resultDate || result.receivedDate)}</span>
         <span><strong>Ordered</strong>${formatDate(result.orderedDate)}</span>
-        <span><strong>Received</strong>${formatDate(result.receivedDate)}</span>
         <span><strong>Linked visit</strong>${escapeHtml(linkedVisitLine)}</span>
         <span><strong>Care plans</strong>${carePlanCount ? `${carePlanCount} linked` : "None linked"}</span>
         <span class="full-span"><strong>Details</strong>${escapeHtml(result.details || "Not saved")}</span>
@@ -5139,11 +5151,7 @@ function renderVisitLogResultDraftCard(draft, index) {
         </label>
         <label>
           Result date
-          <input type="date" data-result-field="resultDate" value="${escapeHtml(draft.resultDate || "")}" />
-        </label>
-        <label>
-          Received date
-          <input type="date" data-result-field="receivedDate" value="${escapeHtml(draft.receivedDate || "")}" />
+          <input type="date" data-result-field="resultDate" value="${escapeHtml(draft.resultDate || draft.receivedDate || "")}" />
         </label>
         <label class="full-span">
           Details
@@ -5302,9 +5310,8 @@ function fillResultsForm(result) {
   resultsForm.elements.testName.value = result.testName || "";
   resultsForm.elements.category.value = result.category || "Lab";
   resultsForm.elements.status.value = result.status || "Pending";
-  resultsForm.elements.resultDate.value = result.resultDate || "";
+  resultsForm.elements.resultDate.value = result.resultDate || result.receivedDate || "";
   resultsForm.elements.orderedDate.value = result.orderedDate || "";
-  resultsForm.elements.receivedDate.value = result.receivedDate || "";
   resultsForm.elements.provider.value = result.provider || "";
   resultsForm.elements.clinic.value = result.clinic || "";
   resultsForm.elements.details.value = result.details || "";
@@ -5354,7 +5361,7 @@ function buildResultFromForm(formData) {
     linkedCarePlanIds,
     resultDate: cleanText(formData.get("resultDate")),
     orderedDate: cleanText(formData.get("orderedDate")),
-    receivedDate: cleanText(formData.get("receivedDate")),
+    receivedDate: existing?.receivedDate || "",
     provider: cleanText(formData.get("provider")),
     clinic: cleanText(formData.get("clinic")),
     testName: cleanText(formData.get("testName")),
@@ -5632,7 +5639,7 @@ function getCarePlanDerivedLastCompleted(item) {
   return cleanText(item?.lastCompletedDate);
 }
 
-function syncCarePlanDerivedFields(item) {
+function syncCarePlanDerivedFields(item, { preserveManualProvider = false } = {}) {
   if (!item) {
     return item;
   }
@@ -5641,13 +5648,9 @@ function syncCarePlanDerivedFields(item) {
   item.linkedProviderIds = normalizeStringArray(item.linkedProviderIds);
   const connectedLogs = getCarePlanConnectedLogs(item);
   const completedLogs = getCarePlanCompletedLogs(item);
-
-  if (completedLogs.length) {
-    item.lastCompletedDate = completedLogs[0].date;
-  }
-
   const providerIds = new Set(item.linkedProviderIds);
   const providerNames = new Set();
+
   connectedLogs.forEach((log) => {
     if (log.providerId) {
       providerIds.add(log.providerId);
@@ -5660,13 +5663,16 @@ function syncCarePlanDerivedFields(item) {
   item.linkedProviderIds = [...providerIds];
   item.providerMode = providerIds.size > 1 || providerNames.size > 1 ? "multiple" : "single";
 
-  if (item.providerMode === "single" && completedLogs[0]) {
-    if (completedLogs[0].providerId && !item.providerId) {
-      item.providerId = completedLogs[0].providerId;
-    }
-    if (completedLogs[0].provider && !item.providerName) {
-      item.providerName = completedLogs[0].provider;
-      item.provider = completedLogs[0].provider;
+  if (completedLogs.length) {
+    item.lastCompletedDate = completedLogs[0].date;
+    if (!preserveManualProvider) {
+      if (completedLogs[0].provider) {
+        item.providerName = completedLogs[0].provider;
+        item.provider = completedLogs[0].provider;
+      }
+      if (completedLogs[0].providerId) {
+        item.providerId = completedLogs[0].providerId;
+      }
     }
   }
 
@@ -5988,6 +5994,61 @@ function syncVisitLogCarePlanLinks(visitLogId, selectedCarePlanIds) {
   }
 }
 
+function getCarePlanLatestProviderFromLinkedVisits(item) {
+  const connectedLogs = getCarePlanConnectedLogs(item).sort((a, b) => compareOptionalDates(b.date, a.date));
+  const newestWithProvider = connectedLogs.find((log) => cleanText(log.provider));
+  return cleanText(newestWithProvider?.provider);
+}
+
+function renderCarePlanFormLinkedResults() {
+  if (!carePlanFormLinkedResults) {
+    return;
+  }
+
+  const itemId = cleanText(carePlanForm?.elements.carePlanId?.value) || editingCarePlanId;
+  const item = state.carePlan.find((entry) => entry.id === itemId);
+  if (!item) {
+    carePlanFormLinkedResults.innerHTML = `<p class="empty-state-row muted">Save this item first, then link results from the Results tab.</p>`;
+    return;
+  }
+
+  const linked = getCarePlanLinkedResults(item);
+  if (!linked.length) {
+    carePlanFormLinkedResults.innerHTML = `<p class="empty-state-row muted">No linked results yet. Link them from the Results tab.</p>`;
+    return;
+  }
+
+  carePlanFormLinkedResults.innerHTML = linked
+    .slice(0, 5)
+    .map(
+      (result) => `
+        <article class="care-plan-log-row">
+          <div class="care-plan-log-row-main">
+            <strong>${escapeHtml(result.testName)}</strong>
+            <span class="care-plan-log-row-meta">${escapeHtml(result.category)} • ${formatDate(getResultSortDate(result))} • ${escapeHtml(result.status)}</span>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function syncCarePlanAdvancedSection() {
+  const advancedSection = carePlanForm?.querySelector(".care-plan-advanced-section");
+  if (!advancedSection) {
+    return;
+  }
+
+  const hasAdvanced =
+    cleanText(carePlanForm.elements.frequencyMonths?.value) ||
+    cleanText(carePlanForm.elements.carePlanProvider?.value) ||
+    cleanText(carePlanForm.elements.place?.value) ||
+    cleanText(carePlanForm.elements.scheduledDate?.value) ||
+    cleanText(carePlanForm.elements.scheduledTime?.value);
+
+  advancedSection.open = Boolean(hasAdvanced);
+}
+
 function renderCarePlanVisitLogRow(log, { connected = false, carePlanItemId = "" } = {}) {
   return `
     <article class="care-plan-log-row">
@@ -6037,6 +6098,8 @@ function renderCarePlanConnectedVisitLogsEditor() {
       carePlanForm.elements.lastCompletedDate.value = newestCompleted.date;
     }
   }
+
+  renderCarePlanFormLinkedResults();
 }
 
 function renderCarePlanLinkedVisitsSummary(item, connectedLogs = getCarePlanConnectedLogs(item)) {
@@ -6564,12 +6627,10 @@ function renderCarePlanCard(item) {
     : "";
   const connectedLogs = getCarePlanConnectedLogs(item);
   const linkedResults = getCarePlanLinkedResults(item);
-  const providerDetails = getCarePlanProviderDisplayDetails(item);
-  const providerDetailsBlock = providerDetails
-    ? `<ul class="care-plan-provider-list">${providerDetails
-        .split(", ")
-        .map((name) => `<li>${escapeHtml(name)}</li>`)
-        .join("")}</ul>`
+  const latestProvider = getCarePlanLatestProviderFromLinkedVisits(item);
+  const linkedVisitsBlock = connectedLogs.length
+    ? `<span><strong>Linked visits</strong>${connectedLogs.length}</span>
+       <span><strong>Latest provider</strong>${escapeHtml(latestProvider || "Not saved")}</span>`
     : "";
 
   return `
@@ -6584,10 +6645,9 @@ function renderCarePlanCard(item) {
       <div class="care-plan-info-grid compact-grid">
         <span><strong>Next due</strong>${escapeHtml(formatCarePlanNextDue(item))}</span>
         <span><strong>Last completed</strong>${formatDate(getCarePlanDerivedLastCompleted(item))}</span>
-        <span><strong>Linked visits</strong>${connectedLogs.length}</span>
+        ${linkedVisitsBlock}
         <span><strong>Linked results</strong>${linkedResults.length}</span>
         <span><strong>Scheduled</strong>${escapeHtml(scheduledLine)}</span>
-        <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}${providerDetailsBlock}</span>
       </div>
       ${renderCarePlanLinkedVisitsSummary(item, connectedLogs)}
       ${renderCarePlanLinkedResultsSummary(item)}
@@ -6665,6 +6725,8 @@ function resetCarePlanForm() {
   }
   syncCarePlanDueShortcutButtons();
   renderCarePlanConnectedVisitLogsEditor();
+  renderCarePlanFormLinkedResults();
+  syncCarePlanAdvancedSection();
 }
 
 function fillCarePlanForm(item) {
@@ -6674,7 +6736,6 @@ function fillCarePlanForm(item) {
   carePlanForm.elements.category.value = item.category || "";
   carePlanForm.elements.name.value = item.name || "";
   carePlanForm.elements.summary.value = item.summary || "";
-  carePlanForm.elements.frequency.value = item.frequency || "";
   carePlanForm.elements.frequencyMonths.value =
     item.frequencyMonths === null || item.frequencyMonths === undefined ? "" : String(item.frequencyMonths);
   carePlanForm.elements.lastCompletedDate.value = getCarePlanDerivedLastCompleted(item) || "";
@@ -6696,6 +6757,8 @@ function fillCarePlanForm(item) {
   renderCarePlanProviderSelect(item);
   syncCarePlanDueShortcutButtons();
   renderCarePlanConnectedVisitLogsEditor();
+  renderCarePlanFormLinkedResults();
+  syncCarePlanAdvancedSection();
 }
 
 function handleCarePlanSubmit(event) {
@@ -6706,18 +6769,26 @@ function handleCarePlanSubmit(event) {
     return;
   }
 
-  const rawFrequencyMonths = cleanText(formData.get("frequencyMonths"));
-  const frequencyMonths = rawFrequencyMonths ? numberOrFallback(rawFrequencyMonths, null) : null;
   const itemId = cleanText(formData.get("carePlanId")) || crypto.randomUUID();
   const existing = state.carePlan.find((entry) => entry.id === itemId);
-  const providerFields = resolveCarePlanProviderFromForm(cleanText(formData.get("carePlanProvider")));
+  const rawFrequencyMonths = cleanText(formData.get("frequencyMonths"));
+  const frequencyMonths = rawFrequencyMonths
+    ? numberOrFallback(rawFrequencyMonths, null)
+    : existing?.frequencyMonths ?? null;
+  const providerSelection = cleanText(formData.get("carePlanProvider"));
+  const providerFields = providerSelection
+    ? resolveCarePlanProviderFromForm(providerSelection)
+    : {
+        providerId: existing?.providerId || "",
+        providerName: existing?.providerName || existing?.provider || "",
+      };
   const nextItem = normalizeCarePlanItem({
     id: itemId,
     key: existing?.key || normalizeLookupKey(name),
     category: cleanText(formData.get("category")),
     name,
     summary: cleanText(formData.get("summary")),
-    frequency: cleanText(formData.get("frequency")),
+    frequency: existing?.frequency || "",
     frequencyMonths,
     lastCompletedDate: cleanText(formData.get("lastCompletedDate")),
     nextDueDate: cleanText(formData.get("nextDueDate")),
@@ -6728,6 +6799,7 @@ function handleCarePlanSubmit(event) {
     providerName: providerFields.providerName,
     linkedVisitLogIds: editingCarePlanLinkedVisitLogIds,
     linkedProviderIds: existing?.linkedProviderIds || [],
+    linkedResultIds: existing?.linkedResultIds || [],
     providerMode: existing?.providerMode || "single",
     place: cleanText(formData.get("place")),
     notes: cleanText(formData.get("notes")),
@@ -6740,7 +6812,7 @@ function handleCarePlanSubmit(event) {
     return;
   }
 
-  syncCarePlanDerivedFields(nextItem);
+  syncCarePlanDerivedFields(nextItem, { preserveManualProvider: Boolean(providerSelection) });
 
   const existingIndex = state.carePlan.findIndex((entry) => entry.id === itemId);
   if (existingIndex >= 0) {

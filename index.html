@@ -768,10 +768,6 @@
                 <input type="date" name="orderedDate" />
               </label>
               <label>
-                Received date
-                <input type="date" name="receivedDate" />
-              </label>
-              <label>
                 Provider
                 <input type="text" name="provider" placeholder="Provider name" />
               </label>
@@ -851,7 +847,7 @@
               </div>
               <button id="carePlanFormBack" class="button-secondary" type="button">← Back to Care Plan</button>
             </div>
-            <form id="carePlanForm" class="form-grid">
+            <form id="carePlanForm" class="form-grid care-plan-form">
               <input type="hidden" name="carePlanId" id="carePlanFormId" />
               <label>
                 Category
@@ -866,24 +862,13 @@
                 <input type="text" name="summary" placeholder="What this covers" />
               </label>
               <label>
-                How often / frequency
-                <input type="text" name="frequency" placeholder="1x per year" />
-              </label>
-              <label>
-                Frequency (months, for auto next due)
-                <input type="number" name="frequencyMonths" min="0" step="1" placeholder="12" />
-              </label>
-              <label>
                 Last completed date
                 <input type="date" name="lastCompletedDate" />
-              </label>
-              <label>
-                Provider
-                <select name="carePlanProvider" id="carePlanProviderSelect"></select>
+                <span class="meta">Uses the newest linked completed visit when visits are connected.</span>
               </label>
               <div class="follow-up-section full-span care-plan-connected-logs">
                 <p class="eyebrow">Connected visit logs</p>
-                <p class="meta">Link completed visits to this care plan item. Last completed uses the newest linked visit.</p>
+                <p class="meta">Link completed visits to this care plan item. Providers come from linked visits.</p>
                 <label class="full-span">
                   Search visit logs
                   <input type="search" id="carePlanVisitLogSearch" placeholder="Search provider, clinic, specialty, reason, summary, date" />
@@ -894,18 +879,11 @@
                 <div id="carePlanConnectedVisitLogs" class="compact-list care-plan-log-list"></div>
                 <div id="carePlanAvailableVisitLogs" class="compact-list care-plan-log-list"></div>
               </div>
-              <label>
-                Place / clinic
-                <input type="text" name="place" placeholder="Clinic name or address" />
-              </label>
-              <label>
-                Scheduled date
-                <input type="date" name="scheduledDate" />
-              </label>
-              <label>
-                Scheduled time
-                <input type="time" name="scheduledTime" />
-              </label>
+              <div class="follow-up-section full-span care-plan-connected-results">
+                <p class="eyebrow">Connected results</p>
+                <p class="meta">Link results from the Results tab. They appear here after saving.</p>
+                <div id="carePlanFormLinkedResults" class="compact-list care-plan-log-list"></div>
+              </div>
               <div class="follow-up-section full-span">
                 <p class="eyebrow">Next due</p>
                 <p id="carePlanNextDueHint" class="meta follow-up-hint is-hidden"></p>
@@ -933,6 +911,31 @@
                 <input type="checkbox" name="isOptional" id="carePlanOptionalToggle" />
                 Mark as optional / as-needed
               </label>
+              <details class="form-section full-span care-plan-advanced-section">
+                <summary class="form-section-summary">Advanced settings</summary>
+                <div class="form-section-body form-grid">
+                  <label>
+                    Frequency (months, for auto next due)
+                    <input type="number" name="frequencyMonths" min="0" step="1" placeholder="12" />
+                  </label>
+                  <label>
+                    Manual provider override
+                    <select name="carePlanProvider" id="carePlanProviderSelect"></select>
+                  </label>
+                  <label>
+                    Place / clinic
+                    <input type="text" name="place" placeholder="Clinic name or address" />
+                  </label>
+                  <label>
+                    Scheduled date
+                    <input type="date" name="scheduledDate" />
+                  </label>
+                  <label>
+                    Scheduled time
+                    <input type="time" name="scheduledTime" />
+                  </label>
+                </div>
+              </details>
               <div class="inline-row full-span">
                 <button id="carePlanSubmitButton" class="button-primary" type="submit">Save Care Plan Item</button>
                 <button id="carePlanCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
