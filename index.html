@@ -8,8 +8,8 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="hero">
-        <div>
+      <header class="hero hero-grid section-card">
+        <div class="hero-intro">
           <p class="eyebrow">Medical Appointment Tracker</p>
           <h1>Keep visits, reminders, and insurance in one place.</h1>
           <p class="hero-copy">
@@ -17,16 +17,18 @@
             next visit using rules you set yourself. This tool does not provide medical advice.
           </p>
         </div>
-        <div class="hero-panel">
-          <div class="stat-card">
-            <span>Upcoming reminders</span>
-            <strong id="heroReminderCount">0</strong>
+        <div class="hero-side">
+          <div class="stats-grid hero-stats-grid">
+            <article class="stat-card">
+              <span class="stat-label">Upcoming reminders</span>
+              <strong id="heroReminderCount" class="stat-value">0</strong>
+            </article>
+            <article class="stat-card">
+              <span class="stat-label">Tracked providers</span>
+              <strong id="heroProviderCount" class="stat-value">0</strong>
+            </article>
           </div>
-          <div class="stat-card">
-            <span>Tracked providers</span>
-            <strong id="heroProviderCount">0</strong>
-          </div>
-          <details class="hero-dropdown">
+          <details class="hero-dropdown section-card">
             <summary class="button-secondary hero-dropdown-button">Personal Profile</summary>
             <div class="hero-dropdown-panel">
               <div class="section-heading">
@@ -98,7 +100,7 @@
               </form>
             </div>
           </details>
-          <button id="notificationButton" class="button-secondary" type="button">
+          <button id="notificationButton" class="button-secondary hero-action-button" type="button">
             Enable Browser Notifications
           </button>
         </div>
@@ -114,19 +116,18 @@
 
       <main class="screen-stack">
         <section class="app-screen is-active" data-screen="dashboard">
-          <section class="panel home-panel">
-            <div class="section-heading">
+          <section class="panel section-card home-panel">
+            <div class="section-heading compact-heading">
               <div>
                 <p class="eyebrow">Dashboard</p>
-                <h2>Track appointments, visit logs, and reminders.</h2>
-                <p class="meta">A cleaner overview with today’s reminders, upcoming visits, overdue alerts, and recent visit notes.</p>
+                <h2>Your health schedule at a glance</h2>
               </div>
               <div class="home-actions">
                 <button id="exportBackupButton" class="button-secondary" type="button">Export Backup</button>
                 <button id="importBackupButton" class="button-secondary" type="button">Import Backup</button>
               </div>
             </div>
-            <div class="home-action-grid">
+            <div class="quick-actions-grid">
               <button id="homeAddAppointmentAction" class="action-card button-primary" type="button">Add Appointment</button>
               <button id="homeLogVisitAction" class="action-card button-secondary" type="button">Log Visit</button>
               <button id="homeViewVisitsAction" class="action-card button-secondary" type="button">View Visits</button>
@@ -134,100 +135,76 @@
               <button id="homeInsuranceAction" class="action-card button-secondary" type="button">Insurance</button>
               <button id="homeCarePlanAction" class="action-card button-secondary" type="button">Care Plan</button>
             </div>
-            <div class="home-status-grid">
+            <div class="stats-grid home-status-grid">
               <article class="stat-card">
-                <span>Upcoming reminders</span>
-                <strong id="homeReminderCount">0</strong>
+                <span class="stat-label">Upcoming reminders</span>
+                <strong id="homeReminderCount" class="stat-value">0</strong>
               </article>
               <article class="stat-card">
-                <span>Tracked providers</span>
-                <strong id="homeProviderCount">0</strong>
+                <span class="stat-label">Tracked providers</span>
+                <strong id="homeProviderCount" class="stat-value">0</strong>
               </article>
               <article class="stat-card">
-                <span>Overdue alerts</span>
-                <strong id="homeOverdueCount">0</strong>
+                <span class="stat-label">Overdue alerts</span>
+                <strong id="homeOverdueCount" class="stat-value">0</strong>
               </article>
               <article class="stat-card">
-                <span>Scheduled visits</span>
-                <strong id="homeScheduledCount">0</strong>
+                <span class="stat-label">Scheduled visits</span>
+                <strong id="homeScheduledCount" class="stat-value">0</strong>
               </article>
             </div>
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Suggested Appointments</p>
-                <h2>Recommendations based on your profile</h2>
-              </div>
-            </div>
-            <div id="recommendationList" class="card-list empty-state"></div>
-          </section>
 
-          <section class="panel home-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Today</p>
-                <h2>Appointments and reminders scheduled for today</h2>
-              </div>
+            <div class="dashboard-grid">
+              <section class="dashboard-subsection">
+                <h3 class="subsection-title">Today</h3>
+                <div id="homeTodayList" class="compact-list"></div>
+              </section>
+              <section class="dashboard-subsection">
+                <h3 class="subsection-title">Upcoming</h3>
+                <div id="homeUpcomingList" class="compact-list"></div>
+              </section>
+              <section class="dashboard-subsection">
+                <h3 class="subsection-title">Overdue</h3>
+                <div id="homeOverdueList" class="compact-list"></div>
+              </section>
+              <section class="dashboard-subsection dashboard-subsection-wide">
+                <h3 class="subsection-title">Recent Visit Logs</h3>
+                <div id="homeRecentLogsList" class="compact-list"></div>
+              </section>
             </div>
-            <div id="homeTodayList" class="card-list empty-state"></div>
-          </section>
 
-          <section class="panel home-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Upcoming</p>
-                <h2>Items due soon</h2>
-              </div>
-            </div>
-            <div id="homeUpcomingList" class="card-list empty-state"></div>
-          </section>
-
-          <section class="panel home-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Overdue</p>
-                <h2>Items that need attention</h2>
-              </div>
-            </div>
-            <div id="homeOverdueList" class="card-list empty-state"></div>
-          </section>
-
-          <section class="panel home-section">
-            <div class="section-heading">
-              <div>
-                <p class="eyebrow">Recent Visit Logs</p>
-                <h2>Recent history and follow-up notes</h2>
-              </div>
-            </div>
-            <div id="homeRecentLogsList" class="card-list empty-state"></div>
+            <section id="homeRecommendationsSection" class="dashboard-subsection is-hidden">
+              <h3 class="subsection-title">Recommendations based on your profile</h3>
+              <div id="recommendationList" class="compact-list"></div>
+            </section>
           </section>
           <input id="importBackupInput" class="is-hidden" type="file" accept="application/json" />
         </section>
 
         <section class="app-screen" data-screen="appointments">
-          <section class="panel visits-panel is-active" data-visits-view="list">
-            <div class="section-heading">
+          <section class="panel visits-panel is-active section-card" data-visits-view="list">
+            <div class="section-heading compact-heading">
               <div>
                 <p class="eyebrow">Visits</p>
                 <h2>Visits &amp; Medical History</h2>
-                <p class="meta">Search past visits, upcoming appointments, and follow-ups.</p>
               </div>
             </div>
-            <div class="visits-action-bar">
+            <p id="visitsRecordCount" class="meta visits-record-count">0 records</p>
+            <div class="visits-action-bar actions-row">
               <button id="visitsAddAppointmentButton" class="button-primary" type="button">+ Add Appointment</button>
               <button id="visitsLogVisitButton" class="button-secondary" type="button">+ Log Visit</button>
-              <button id="visitsSearchFilterButton" class="button-secondary" type="button">Search / Filter</button>
             </div>
-            <label class="visits-search-field">
-              Search
-              <input id="appointmentSearchInput" type="search" placeholder="Search provider, specialty, reason, clinic" />
-            </label>
-            <div class="inline-row record-view-toggle compact-view-toggle">
+            <div class="record-view-toggle actions-row">
               <button class="button-secondary is-active" type="button" data-record-view="list">List view</button>
               <button class="button-secondary" type="button" data-record-view="timeline">Timeline view</button>
             </div>
-            <details id="visitsFiltersPanel" class="visits-filters-panel">
-              <summary class="filters-toggle">Filters</summary>
-              <div class="form-grid appointment-filters">
+            <details id="visitsFiltersPanel" class="visits-filters-panel section-card">
+              <summary class="filters-toggle">Search &amp; Filters</summary>
+              <label class="visits-search-field">
+                Search
+                <input id="appointmentSearchInput" type="search" placeholder="Search provider, specialty, reason, clinic" />
+              </label>
+              <div class="form-grid appointment-filters compact-grid">
                 <label>
                   Type
                   <select id="recordTypeFilter">
@@ -322,7 +299,7 @@
                   </label>
                   <label id="customProviderLabel" class="full-span is-hidden">
                     Custom provider
-                    <input type="text" name="customDoctor" placeholder="Dr. Patel" />
+                    <input type="text" name="customDoctor" placeholder="Provider name" />
                   </label>
                   <label id="customSpecialtyLabel" class="full-span is-hidden">
                     Custom specialty
@@ -330,7 +307,7 @@
                   </label>
                   <label>
                     Clinic
-                    <input type="text" name="clinic" placeholder="Austin Family Clinic" />
+                    <input type="text" name="clinic" placeholder="Clinic name" />
                   </label>
                   <label>
                     Appointment date
@@ -371,7 +348,7 @@
                 <div class="form-grid form-section-body">
                   <label>
                     Address
-                    <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
+                    <input type="text" name="place" placeholder="Street address, city, state" />
                   </label>
                   <label>
                     Phone number
@@ -696,23 +673,21 @@
         </section>
 
         <section class="app-screen" data-screen="care-team">
-          <section class="panel">
-            <div class="section-heading">
+          <section class="panel section-card">
+            <div class="section-heading compact-heading">
               <div>
                 <p class="eyebrow">Care Team</p>
                 <h2>Your providers in one place</h2>
                 <p class="meta">Provider details are grouped here so appointments can stay focused on visit tracking.</p>
               </div>
             </div>
-            <div class="care-team-action-bar">
-              <button id="careTeamAddProviderButton" class="button-primary" type="button">+ Add Provider</button>
-              <button id="careTeamManageProvidersButton" class="button-secondary" type="button">Manage Providers</button>
-            </div>
-            <form id="providerForm" class="form-grid">
+            <details id="providerFormPanel" class="collapsible-form section-card">
+              <summary id="careTeamAddProviderButton" class="collapsible-form-toggle">+ Add Provider</summary>
+              <form id="providerForm" class="form-grid compact-grid">
               <input type="hidden" name="providerId" id="providerFormId" />
               <label>
                 Provider
-                <input type="text" name="doctor" placeholder="Dr. Patel" required />
+                <input type="text" name="doctor" placeholder="Provider name" required />
               </label>
               <label>
                 Specialty
@@ -724,19 +699,19 @@
               </label>
               <label>
                 Clinic
-                <input type="text" name="clinic" placeholder="Austin Family Clinic" />
+                <input type="text" name="clinic" placeholder="Clinic name" />
               </label>
               <label>
                 Address
-                <input type="text" name="place" placeholder="123 Main St, Austin, TX" />
+                <input type="text" name="place" placeholder="Street address, city, state" />
               </label>
               <label>
                 Phone number
-                <input type="text" name="contactPhone" placeholder="Optional office number" />
+                <input type="text" name="contactPhone" placeholder="Office phone number" />
               </label>
               <label>
                 Insurance accepted
-                <input type="text" name="insuranceAccepted" placeholder="Aetna, BCBS, self-pay" />
+                <input type="text" name="insuranceAccepted" placeholder="Plans accepted or self-pay" />
               </label>
               <label class="full-span">
                 Portal link
@@ -746,32 +721,33 @@
                 Notes
                 <textarea name="notes" rows="3" placeholder="Hours, referral details, or what to ask next time"></textarea>
               </label>
-              <div class="inline-row full-span">
+              <div class="actions-row full-span">
                 <button id="providerSubmitButton" class="button-primary" type="submit">Add Provider</button>
                 <button id="providerFormCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
               </div>
             </form>
-            <div id="careTeamList" class="card-list empty-state care-team-provider-list"></div>
+            </details>
+            <div id="careTeamList" class="provider-card-grid empty-state"></div>
           </section>
         </section>
 
         <section class="app-screen" data-screen="insurance">
-          <section class="panel">
-            <div class="section-heading">
+          <section class="panel section-card">
+            <div class="section-heading compact-heading">
               <div>
                 <p class="eyebrow">Insurance</p>
                 <h2>Basic insurance information</h2>
               </div>
             </div>
 
-            <form id="insuranceForm" class="form-grid">
+            <form id="insuranceForm" class="form-grid insurance-form-grid compact-grid">
               <label>
                 Insurance provider
-                <input type="text" name="provider" placeholder="Blue Cross Blue Shield" />
+                <input type="text" name="provider" placeholder="Insurance company name" />
               </label>
               <label>
                 Plan name
-                <input type="text" name="planName" placeholder="PPO Silver" />
+                <input type="text" name="planName" placeholder="Plan name or type" />
               </label>
               <label>
                 Member ID
@@ -783,7 +759,7 @@
               </label>
               <label>
                 Copay
-                <input type="text" name="copay" placeholder="$30 primary care" />
+                <input type="text" name="copay" placeholder="Primary care copay" />
               </label>
               <label>
                 Insurance phone
@@ -797,20 +773,18 @@
                   placeholder="Referral details, pharmacy info, claims notes, or support hours"
                 ></textarea>
               </label>
-              <div class="inline-row full-span">
+              <div class="actions-row full-span">
                 <button class="button-primary" type="submit">Save Insurance Info</button>
               </div>
             </form>
-          </section>
 
-          <section class="panel">
-            <div class="section-heading">
+            <div class="section-heading compact-heading insurance-snapshot-heading">
               <div>
                 <p class="eyebrow">Saved Summary</p>
-                <h2>Insurance snapshot</h2>
+                <h3 class="subsection-title">Insurance snapshot</h3>
               </div>
             </div>
-            <div id="insuranceSummary" class="card-list empty-state"></div>
+            <div id="insuranceSummary" class="empty-state"></div>
           </section>
         </section>
       </main>

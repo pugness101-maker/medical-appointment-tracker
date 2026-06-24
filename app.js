@@ -633,7 +633,9 @@ const visitLogFormTitle = document.querySelector("#visitLogFormTitle");
 const visitLogProviderSelect = document.querySelector("#visitLogProviderSelect");
 const editProvidersButton = document.querySelector("#editProvidersButton");
 const careTeamAddProviderButton = document.querySelector("#careTeamAddProviderButton");
-const careTeamManageProvidersButton = document.querySelector("#careTeamManageProvidersButton");
+const providerFormPanel = document.querySelector("#providerFormPanel");
+const visitsRecordCount = document.querySelector("#visitsRecordCount");
+const homeRecommendationsSection = document.querySelector("#homeRecommendationsSection");
 const providerFormId = document.querySelector("#providerFormId");
 const providerSubmitButton = document.querySelector("#providerSubmitButton");
 const providerFormCancelButton = document.querySelector("#providerFormCancelButton");
@@ -832,11 +834,12 @@ function bindEvents() {
   if (editProvidersButton) {
     on(editProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
   }
-  if (careTeamAddProviderButton) {
-    on(careTeamAddProviderButton, "click", () => openCareTeamProviders({ focusForm: true }));
-  }
-  if (careTeamManageProvidersButton) {
-    on(careTeamManageProvidersButton, "click", () => openCareTeamProviders({ scrollToList: true }));
+  if (providerFormPanel) {
+    on(providerFormPanel, "toggle", () => {
+      if (providerFormPanel.open && providerForm?.elements.doctor) {
+        providerForm.elements.doctor.focus();
+      }
+    });
   }
   if (providerFormCancelButton) {
     on(providerFormCancelButton, "click", resetProviderForm);
@@ -1144,11 +1147,14 @@ function handleProviderSubmit(event) {
     return;
   }
 
-  const providerKey = normalizeLookupKey(`${doctor}|${specialty}|${clinic || "unspecified"}`);
+  const providerKey = getProviderContentKey({ doctor, specialty, clinic });
   const savedProviderId = cleanText(formData.get("providerId"));
-  const existingIndex = savedProviderId
+  let existingIndex = savedProviderId
     ? state.providers.findIndex((provider) => provider.id === savedProviderId)
-    : state.providers.findIndex((provider) => provider.key === providerKey);
+    : -1;
+  if (existingIndex < 0) {
+    existingIndex = state.providers.findIndex((provider) => getProviderContentKey(provider) === providerKey);
+  }
 
   const providerRecord = normalizeProvider({
     id: existingIndex >= 0 ? state.providers[existingIndex].id : crypto.randomUUID(),
@@ -1176,6 +1182,12 @@ function handleProviderSubmit(event) {
     state.providers.push(providerRecord);
   }
 
+  removeDeletedProviderKey(providerKey);
+  if (providerRecord.key) {
+    removeDeletedProviderKey(providerRecord.key);
+  }
+
+  state.providers = getActiveProviders(state.providers, state.deletedSeedKeys);
   persist();
   resetProviderForm();
   renderAllProviderDropdowns();
@@ -1198,9 +1210,14 @@ function openCareTeamProviders({ focusForm = false, scrollToList = false } = {})
     if (scrollToList && careTeamList) {
       careTeamList.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    if (focusForm && providerForm) {
-      providerForm.scrollIntoView({ behavior: "smooth", block: "start" });
-      providerForm.elements.doctor?.focus();
+    if (focusForm) {
+      if (providerFormPanel) {
+        providerFormPanel.open = true;
+      }
+      if (providerForm) {
+        providerForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        providerForm.elements.doctor?.focus();
+      }
     }
   });
 }
@@ -1228,6 +1245,9 @@ function resetProviderForm() {
 
 function loadProviderIntoForm(provider) {
   editingProviderId = provider.id;
+  if (providerFormPanel) {
+    providerFormPanel.open = true;
+  }
   if (providerFormId) {
     providerFormId.value = provider.id;
   }
@@ -1317,11 +1337,76 @@ function getProviderRecordName(provider) {
   if (!provider) {
     return "";
   }
+  const name = cleanText(provider.name);
+  const doctor = cleanText(provider.doctor);
+  if (name && doctor && normalizeLookupKey(name) === normalizeLookupKey(doctor)) {
+    return name;
+  }
   return (
-    cleanText(provider.name) ||
-    cleanText(provider.doctor) ||
+    name ||
+    doctor ||
     cleanText(provider.provider) ||
     cleanText(provider.providerName)
+  );
+}
+
+function getProviderContentKey(provider) {
+  const name = getProviderRecordName(provider);
+  const specialty = cleanText(provider?.specialty) || "General";
+  const clinic = cleanText(provider?.clinic) || cleanText(provider?.address) || cleanText(provider?.place);
+  return normalizeLookupKey(`${name}|${specialty}|${clinic}`);
+}
+
+function isProviderPlaceholder(provider) {
+  const name = getProviderRecordName(provider);
+  const specialty = cleanText(provider?.specialty);
+  const clinic = cleanText(provider?.clinic) || cleanText(provider?.address) || cleanText(provider?.place);
+  return !name || !specialty || !clinic;
+}
+
+function isProviderSeedDeleted(provider, deletedKeys) {
+  const contentKey = getProviderContentKey(provider);
+  const storedKey = normalizeLookupKey(provider?.key);
+  return deletedKeys.has(contentKey) || (storedKey && deletedKeys.has(storedKey));
+}
+
+function getActiveProviders(providers = state.providers, deletedSeedKeys = state.deletedSeedKeys) {
+  const deleted = new Set(
+    (deletedSeedKeys || []).map((item) => normalizeLookupKey(item)).filter(Boolean)
+  );
+  const seenIds = new Set();
+  const seenContentKeys = new Set();
+  const active = [];
+
+  const candidates = (providers || [])
+    .map((provider) => normalizeProvider(provider))
+    .filter(Boolean)
+    .filter((provider) => !isProviderPlaceholder(provider))
+    .filter((provider) => !isProviderSeedDeleted(provider, deleted))
+    .sort(
+      (a, b) =>
+        compareOptionalDates(b.updatedAt, a.updatedAt) ||
+        compareOptionalDates(b.createdAt, a.createdAt)
+    );
+
+  candidates.forEach((provider) => {
+    const id = cleanText(provider.id);
+    const contentKey = getProviderContentKey(provider);
+    if (id && seenIds.has(id)) {
+      return;
+    }
+    if (seenContentKeys.has(contentKey)) {
+      return;
+    }
+    if (id) {
+      seenIds.add(id);
+    }
+    seenContentKeys.add(contentKey);
+    active.push(provider);
+  });
+
+  return active.sort((a, b) =>
+    getProviderRecordName(a).localeCompare(getProviderRecordName(b), undefined, { sensitivity: "base" })
   );
 }
 
@@ -1337,21 +1422,17 @@ function formatProviderDropdownLabel(name, specialty) {
 }
 
 function getAllProviders() {
-  return (state.providers || [])
-    .map((provider) => normalizeProvider(provider) || provider)
-    .filter((provider) => getProviderRecordName(provider))
-    .sort((a, b) =>
-      getProviderRecordName(a).localeCompare(getProviderRecordName(b), undefined, { sensitivity: "base" })
-    );
+  return getActiveProviders();
 }
 
 function getCareTeamProviders() {
-  return getAllProviders();
+  return getActiveProviders();
 }
 
 function migrateProvidersInPlace() {
+  const dedupedProviders = getActiveProviders(state.providers, state.deletedSeedKeys);
   const previousSnapshot = JSON.stringify(state.providers || []);
-  state.providers = (state.providers || []).map(normalizeProvider).filter(Boolean);
+  state.providers = dedupedProviders;
   if (JSON.stringify(state.providers) !== previousSnapshot) {
     persist();
   }
@@ -1557,7 +1638,7 @@ function handleCareTeamClick(event) {
   const providerDeleteLogsId = event.target.closest("[data-delete-provider-logs]")?.dataset.deleteProviderLogs;
 
   if (providerEditId) {
-    const provider = (state.providers || []).find((item) => item.id === providerEditId);
+    const provider = getActiveProviders().find((item) => item.id === providerEditId);
     if (!provider) {
       return;
     }
@@ -1567,7 +1648,7 @@ function handleCareTeamClick(event) {
   }
 
   if (providerDeleteId) {
-    const provider = (state.providers || []).find((item) => item.id === providerDeleteId);
+    const provider = getActiveProviders().find((item) => item.id === providerDeleteId);
     if (!provider) {
       return;
     }
@@ -1577,7 +1658,9 @@ function handleCareTeamClick(event) {
     if (!confirmed) {
       return;
     }
+    addDeletedProviderKey(provider);
     state.providers = (state.providers || []).filter((item) => item.id !== providerDeleteId);
+    state.providers = getActiveProviders(state.providers, state.deletedSeedKeys);
     if (editingProviderId === providerDeleteId) {
       resetProviderForm();
     }
@@ -1587,7 +1670,7 @@ function handleCareTeamClick(event) {
   }
 
   if (providerDeleteLogsId) {
-    const provider = (state.providers || []).find((item) => item.id === providerDeleteLogsId);
+    const provider = getActiveProviders().find((item) => item.id === providerDeleteLogsId);
     if (!provider) {
       return;
     }
@@ -1835,23 +1918,24 @@ function syncForms() {
 
 function render() {
   const summaries = getAppointmentSummaries();
-  const reminderItems = getActiveReminderItems(summaries);
-  const recommendations = getProfileRecommendations();
-  const providerCount = new Set(
-    getDisplayableAppointments().map((item) => item.doctor).concat(state.visitLogs.map((log) => log.provider))
-  ).size;
+  const providerCount = getActiveProviders().length;
+  const upcomingReminderCount = getUpcomingReminderCount();
+  const overdueAlertCount = getOverdueAlertCount();
+  const scheduledVisitCount = getScheduledVisitCount();
 
-  if (heroReminderCount) heroReminderCount.textContent = String(reminderItems.length);
+  if (heroReminderCount) heroReminderCount.textContent = String(upcomingReminderCount);
   if (heroProviderCount) heroProviderCount.textContent = String(providerCount);
-  if (homeReminderCount) homeReminderCount.textContent = String(reminderItems.length);
+  if (homeReminderCount) homeReminderCount.textContent = String(upcomingReminderCount);
   if (homeProviderCount) homeProviderCount.textContent = String(providerCount);
+  if (homeOverdueCount) homeOverdueCount.textContent = String(overdueAlertCount);
+  if (homeScheduledCount) homeScheduledCount.textContent = String(scheduledVisitCount);
 
-  renderDashboardStats(summaries, reminderItems);
   renderHomeSections(summaries);
-  renderReminderList(reminderItems);
+  renderReminderList(getActiveReminderItems(summaries));
   renderAppointmentLists(summaries);
+  renderVisitRecordCount(summaries);
   renderVisitHistoryGlobalList();
-  renderRecommendations(recommendations);
+  renderRecommendations(getProfileRecommendations());
   renderInsuranceSummary();
   renderCareTeam();
   renderAppointmentFilters();
@@ -1860,6 +1944,132 @@ function render() {
   renderRecordView();
   renderCarePlan();
   updateNotificationButton();
+}
+
+function dedupeDashboardItems(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key =
+      cleanText(item.id) ||
+      `${cleanText(item.doctor)}|${cleanText(item.nextVisitDate)}|${Boolean(item.isVisitLogFollowUp)}|${Boolean(item.isCarePlan)}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function getCarePlanDashboardItems(filterStatus) {
+  return state.carePlan
+    .map((item) => ({ ...item, computedStatus: getCarePlanStatus(item) }))
+    .filter((item) => item.computedStatus === filterStatus)
+    .map((item) => ({
+      id: `care-plan-${item.id}`,
+      doctor: item.name,
+      specialty: item.category,
+      reasonForVisit: item.summary,
+      nextVisitDate: item.nextDueDate,
+      reminderStatus: filterStatus === "overdue" ? "overdue" : "soon",
+      isCarePlan: true,
+    }));
+}
+
+function getTodayItems(summaries) {
+  const today = todayString();
+  const appointmentToday = summaries.filter(
+    (item) => item.appointmentDate === today || item.reminderStartDate === today || item.nextVisitDate === today
+  );
+  const followUpToday = getVisitLogFollowUpReminders().filter((item) => item.nextVisitDate === today);
+  const carePlanToday = getCarePlanDashboardItems("due-soon").filter((item) => item.nextVisitDate === today);
+  return dedupeDashboardItems([...appointmentToday, ...followUpToday, ...carePlanToday]);
+}
+
+function getUpcomingItems(summaries) {
+  const today = todayString();
+  const todayIds = new Set(getTodayItems(summaries).map((item) => item.id));
+  const appointmentSoon = summaries.filter((item) => item.reminderStatus === "soon" && !todayIds.has(item.id));
+  const followUpSoon = getVisitLogFollowUpReminders().filter(
+    (item) => item.reminderStatus === "soon" && item.nextVisitDate !== today
+  );
+  const carePlanSoon = getCarePlanDashboardItems("due-soon").filter(
+    (item) => !isValidIsoDate(item.nextVisitDate) || item.nextVisitDate !== today
+  );
+  return dedupeDashboardItems([...appointmentSoon, ...followUpSoon, ...carePlanSoon]);
+}
+
+function getOverdueItems(summaries) {
+  const appointmentOverdue = summaries.filter((item) => item.reminderStatus === "overdue");
+  const followUpOverdue = getVisitLogFollowUpReminders().filter((item) => item.reminderStatus === "overdue");
+  const carePlanOverdue = getCarePlanDashboardItems("overdue");
+  return dedupeDashboardItems([...appointmentOverdue, ...followUpOverdue, ...carePlanOverdue]);
+}
+
+function getUpcomingReminderCount() {
+  const followUpSoon = getVisitLogFollowUpReminders().filter((item) => item.reminderStatus === "soon");
+  const carePlanSoon = getCarePlanDashboardItems("due-soon");
+  return dedupeDashboardItems([...followUpSoon, ...carePlanSoon]).length;
+}
+
+function getOverdueAlertCount() {
+  const followUpOverdue = getVisitLogFollowUpReminders().filter((item) => item.reminderStatus === "overdue");
+  const carePlanOverdue = getCarePlanDashboardItems("overdue");
+  return dedupeDashboardItems([...followUpOverdue, ...carePlanOverdue]).length;
+}
+
+function getScheduledVisitCount() {
+  const today = todayString();
+  return getDisplayableAppointments().filter(
+    (item) =>
+      cleanText(item.appointmentStatus) === "Scheduled" &&
+      isValidIsoDate(item.appointmentDate) &&
+      item.appointmentDate >= today
+  ).length;
+}
+
+function getVisitStats(summaries) {
+  const records = getFilteredSortedRecords(summaries);
+  const scheduled = records.filter(
+    (record) => record.type === "appointment" && cleanText(record.item.appointmentStatus) === "Scheduled"
+  ).length;
+  const completed = records.filter(
+    (record) =>
+      (record.type === "appointment" && cleanText(record.item.appointmentStatus) === "Completed") ||
+      (record.type === "visit-log" && cleanText(record.item.status) === "Completed")
+  ).length;
+  return { total: records.length, scheduled, completed };
+}
+
+function getCarePlanStats() {
+  const items = state.carePlan.map((item) => ({ ...item, computedStatus: getCarePlanStatus(item) }));
+  return {
+    overdue: items.filter((item) => item.computedStatus === "overdue").length,
+    dueSoon: items.filter((item) => item.computedStatus === "due-soon").length,
+    scheduled: items.filter((item) => item.computedStatus === "scheduled").length,
+  };
+}
+
+function renderEmptyStateRow(message) {
+  return `<p class="empty-state-row muted">${escapeHtml(message)}</p>`;
+}
+
+function renderVisitRecordCount(summaries) {
+  if (!visitsRecordCount) {
+    return;
+  }
+  const stats = getVisitStats(summaries);
+  visitsRecordCount.textContent = `${stats.total} record${stats.total === 1 ? "" : "s"} • ${stats.scheduled} scheduled • ${stats.completed} completed`;
+}
+
+function maskMemberId(value) {
+  const memberId = cleanText(value);
+  if (!memberId) {
+    return "Not saved";
+  }
+  if (memberId.length <= 4) {
+    return "****";
+  }
+  return `****${memberId.slice(-4)}`;
 }
 
 function renderDashboardStats(summaries, reminderItems) {
@@ -1941,100 +2151,13 @@ function renderReminderList(reminderItems) {
 
 function renderAppointmentLists(summaries) {
   if (!appointmentList && !dashboardAppointmentList) return;
-  const filteredSummaries = filterAppointmentSummaries(summaries);
-  const markup = filteredSummaries.length
-    ? filteredSummaries
-        .map(
-          (item) => `
-            <details class="appointment-card appointment-dropdown">
-              <summary class="appointment-summary">
-                <div>
-                  <strong>${escapeHtml(getRecordTitle(item))}</strong>
-                  <span class="meta">${escapeHtml(item.reasonForVisit || "No reason saved")}</span>
-                  <span class="meta">Clinic: ${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
-                  <span class="meta">Status: ${escapeHtml(item.appointmentStatus || "Planned")} • Next: ${formatDate(item.nextVisitDate)} • Appointment: ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
-                </div>
-                ${statusPill(item.reminderStatus)}
-              </summary>
-              <div class="appointment-dropdown-body">
-                <div class="detail-grid">
-                  <span><strong>Appointment</strong>${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}</span>
-                  <span><strong>Status</strong>${escapeHtml(item.appointmentStatus || "Planned")}</span>
-                  <span><strong>Clinic</strong>${escapeHtml(item.clinic || extractClinicName(item.place) || "Not saved")}</span>
-                  <span><strong>Address</strong>${escapeHtml(item.place || "Not saved")}</span>
-                  <span><strong>Last visit</strong>${formatDate(item.lastVisitDate)}</span>
-                  <span><strong>Rule</strong>Every ${item.intervalMonths} month${item.intervalMonths === 1 ? "" : "s"}</span>
-                  <span><strong>${escapeHtml(item.nextVisitLabel || "Auto next visit")}</strong>${formatDate(item.nextVisitDate)}</span>
-                  <span><strong>Reminder lead time</strong>${item.reminderDaysBefore} day${item.reminderDaysBefore === 1 ? "" : "s"}</span>
-                  <span><strong>Reason</strong>${escapeHtml(item.reasonForVisit || "Not saved")}</span>
-                  <span><strong>Notifications</strong>${item.reminderEnabled === false ? "Disabled" : "Enabled"}</span>
-                </div>
-                <details class="nested-dropdown">
-                  <summary class="nested-summary">Visit History / Past Visits</summary>
-                  <div class="nested-body visit-history-list">
-                    ${
-                      item.visitHistory?.length
-                        ? item.visitHistory
-                            .slice(0, 2)
-                            .map(
-                              (log) => `
-                                <article class="summary-card">
-                                  <div class="card-head">
-                                    <div>
-                                      <strong>${formatDate(log.date)}</strong>
-                                      <span class="meta">${escapeHtml(log.reason || "Not saved")}</span>
-                                      <span class="meta">${escapeHtml(log.specialty || item.specialty || "General")}</span>
-                                    </div>
-                                    <div class="inline-row">
-                                      <span class="pill ${visitLogStatusClass(log.status)}">${escapeHtml(log.status || "Completed")}</span>
-                                      <button class="button-secondary" type="button" data-edit-visit-log="${log.id}" data-appointment-id="${item.id}">Edit</button>
-                                    </div>
-                                  </div>
-                                  <div class="summary-row"><strong>Summary</strong><span>${escapeHtml(log.summary || "Not saved")}</span></div>
-                                  <div class="summary-row"><strong>Results</strong><span>${escapeHtml(log.results || "Not saved")}</span></div>
-                                  <div class="summary-row"><strong>Follow-up needed</strong><span>${escapeHtml(log.followUpNeeded || "Not saved")}</span></div>
-                                  <div class="summary-row"><strong>Follow-up due</strong><span>${formatFollowUpDueLabel(log.followUpDueDate)}</span></div>
-                                  <div class="summary-row"><strong>Cost / copay</strong><span>${escapeHtml(log.costCopay || "Not saved")}</span></div>
-                                </article>
-                              `
-                            )
-                            .join("") +
-                          (item.visitHistory.length > 2
-                            ? `<button class="button-secondary" type="button" data-view-all-history="${item.id}">View all visit history</button>`
-                            : "")
-                        : `<span class="meta">No visit history logged yet.</span>`
-                    }
-                  </div>
-                </details>
-                <details class="nested-dropdown">
-                  <summary class="nested-summary">Edit Appointment</summary>
-                  <div class="nested-body">
-                    <div class="detail-grid">
-                      <span><strong>Questions</strong>${escapeHtml(item.questionsToAsk || "None saved")}</span>
-                      <span><strong>Medications</strong>${escapeHtml(item.medications || "None saved")}</span>
-                      <span><strong>Test results</strong>${escapeHtml(item.testResults || "None saved")}</span>
-                    </div>
-                    ${
-                      item.resultFiles?.length
-                        ? `<div class="file-list">${item.resultFiles.map((fileName) => `<span class="pill ok">${escapeHtml(fileName)}</span>`).join("")}</div>`
-                        : `<span class="meta">No test-result file names saved.</span>`
-                    }
-                    <span class="meta">${escapeHtml(item.notes || "No notes saved.")}</span>
-                    <div class="inline-row">
-                      <button class="button-secondary" type="button" data-edit-appointment="${item.id}">Edit Appointment</button>
-                      <button class="button-danger" type="button" data-delete-appointment="${item.id}">Delete</button>
-                    </div>
-                  </div>
-                </details>
-              </div>
-            </details>
-          `
-        )
-        .join("")
-    : `<p class="muted">No appointments match the current filters.</p>`;
-
-  appointmentList.innerHTML = renderRecordsList(summaries);
-  dashboardAppointmentList.innerHTML = markup;
+  const markup = renderRecordsList(summaries);
+  if (appointmentList) {
+    appointmentList.innerHTML = markup;
+  }
+  if (dashboardAppointmentList) {
+    dashboardAppointmentList.innerHTML = markup;
+  }
 }
 
 function getRecordTitle(record) {
@@ -2087,20 +2210,9 @@ function renderHomeSections(summaries) {
     return;
   }
 
-  const today = todayString();
-  const visitLogFollowUps = getVisitLogFollowUpReminders();
-  const todayItems = summaries
-    .filter(
-      (item) =>
-        item.appointmentDate === today || item.reminderStartDate === today || item.nextVisitDate === today
-    )
-    .concat(visitLogFollowUps.filter((item) => item.nextVisitDate === today));
-  const overdueItems = summaries
-    .filter((item) => item.reminderStatus === "overdue")
-    .concat(visitLogFollowUps.filter((item) => item.reminderStatus === "overdue"));
-  const upcomingItems = summaries
-    .filter((item) => item.reminderStatus === "soon" && !todayItems.includes(item))
-    .concat(visitLogFollowUps.filter((item) => item.reminderStatus === "soon" && item.nextVisitDate !== today));
+  const todayItems = getTodayItems(summaries);
+  const upcomingItems = getUpcomingItems(summaries);
+  const overdueItems = getOverdueItems(summaries);
   const recentLogs = getAllVisitHistoryEntries()
     .slice()
     .sort((a, b) => compareOptionalDates(b.date, a.date))
@@ -2108,40 +2220,35 @@ function renderHomeSections(summaries) {
 
   homeTodayList.innerHTML = todayItems.length
     ? todayItems.map(renderHomeSummaryCard).join("")
-    : `<p class="muted">No visits or reminders scheduled for today.</p>`;
+    : renderEmptyStateRow("No visits or reminders scheduled for today.");
   homeUpcomingList.innerHTML = upcomingItems.length
     ? upcomingItems.map(renderHomeSummaryCard).join("")
-    : `<p class="muted">No upcoming reminders found.</p>`;
+    : renderEmptyStateRow("No upcoming reminders found.");
   homeOverdueList.innerHTML = overdueItems.length
     ? overdueItems.map(renderHomeSummaryCard).join("")
-    : `<p class="muted">No overdue items right now.</p>`;
+    : renderEmptyStateRow("No overdue items right now.");
   homeRecentLogsList.innerHTML = recentLogs.length
     ? recentLogs.map(renderHomeVisitLogCard).join("")
-    : `<p class="muted">No recent visit logs yet.</p>`;
-
-  if (homeOverdueCount) {
-    homeOverdueCount.textContent = String(overdueItems.length);
-  }
-  if (homeScheduledCount) {
-    homeScheduledCount.textContent = String(summaries.filter((item) => item.appointmentStatus === "Scheduled").length);
-  }
+    : renderEmptyStateRow("No recent visit logs yet.");
 }
 
 function renderHomeSummaryCard(item) {
   const metaLine = item.isVisitLogFollowUp
     ? `Follow-up due ${formatFollowUpCardDate(item.nextVisitDate) || "Not set"}`
-    : `${formatDate(item.nextVisitDate)} • ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}`;
+    : item.isCarePlan
+      ? `Care plan • due ${formatDate(item.nextVisitDate)}`
+      : `${formatDate(item.nextVisitDate)} • ${formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)}`;
   const reasonLine = item.isVisitLogFollowUp
     ? item.followUpNeeded || item.reasonForVisit || "Visit log follow-up"
     : item.reasonForVisit || item.appointmentStatus || "No reason saved";
 
   return `
-    <article class="summary-card">
-      <div class="card-head">
-        <div>
-          <strong>${escapeHtml(getRecordTitle(item))}</strong>
-          <span class="meta">${escapeHtml(reasonLine)}</span>
-          <span class="meta">${escapeHtml(metaLine)}</span>
+    <article class="record-card compact-card">
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <strong class="record-card-provider">${escapeHtml(getRecordTitle(item))}</strong>
+          <span class="record-card-meta">${escapeHtml(metaLine)}</span>
+          <p class="record-card-reason">${escapeHtml(reasonLine)}</p>
         </div>
         ${statusPill(item.reminderStatus || item)}
       </div>
@@ -2150,21 +2257,20 @@ function renderHomeSummaryCard(item) {
 }
 
 function renderHomeVisitLogCard(entry) {
-  const followUpLine = isValidIsoDate(entry.followUpDueDate)
-    ? `<span class="meta">Follow-up due: ${formatFollowUpCardDate(entry.followUpDueDate)}</span>`
+  const summaryLine = cleanText(entry.summary)
+    ? `<p class="record-card-summary">${escapeHtml(entry.summary)}</p>`
     : "";
   return `
-    <article class="summary-card">
-      <div class="card-head">
-        <div>
-          <strong>${escapeHtml(getRecordTitle(entry))}</strong>
-          <span class="meta">${escapeHtml(entry.reason || "No reason saved")}</span>
-          <span class="meta">${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
-          ${followUpLine}
+    <article class="record-card compact-card">
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <strong class="record-card-provider">${escapeHtml(entry.provider || getRecordTitle(entry))}</strong>
+          <span class="record-card-meta">${escapeHtml(entry.specialty || "General")} • ${formatDate(entry.date)} • ${escapeHtml(entry.clinic || "No clinic saved")}</span>
+          <p class="record-card-reason">${escapeHtml(entry.reason || "No reason saved")}</p>
+          ${summaryLine}
         </div>
-        ${statusPill(entry)}
+        <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
       </div>
-      <div class="summary-row"><strong>Summary</strong><span>${escapeHtml(entry.summary || "Not saved")}</span></div>
     </article>
   `;
 }
@@ -2210,17 +2316,20 @@ function renderVisitTimelineList(summaries) {
 function renderTimelineEntry(record) {
   const item = record.item;
   const entryLabel = record.type === "appointment" ? "Appointment" : "Visit Log";
-  const dateLabel = record.type === "appointment" ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime) : formatDate(item.date);
+  const dateLabel =
+    record.type === "appointment"
+      ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)
+      : formatDate(item.date);
 
   return `
-    <article class="timeline-card">
-      <div class="timeline-card-meta">
-        <strong>${escapeHtml(getRecordTitle(item))}</strong>
-        <span class="meta">${escapeHtml(dateLabel)} • ${escapeHtml(record.type === "appointment" ? item.appointmentStatus || "Planned" : entryLabel)}</span>
-      </div>
-      <div class="inline-row wrap">
-        ${statusPill(item)}
-        <span class="pill ${record.type === "appointment" ? "scheduled" : "ok"}">${entryLabel}</span>
+    <article class="record-card timeline-card">
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <span class="pill ${record.type === "appointment" ? "scheduled" : "ok"} badge">${entryLabel}</span>
+          <strong class="record-card-provider">${escapeHtml(getRecordTitle(item))}</strong>
+          <span class="record-card-meta">${escapeHtml(dateLabel)} • ${escapeHtml(record.type === "appointment" ? item.appointmentStatus || "Planned" : item.status || "Completed")}</span>
+        </div>
+        ${record.type === "appointment" ? statusPill(item) : `<span class="pill ${visitLogStatusClass(item.status)}">${escapeHtml(item.status || "Completed")}</span>`}
       </div>
     </article>
   `;
@@ -2358,7 +2467,7 @@ function renderAppointmentRecordCard(item) {
     ? formatAppointmentDateTime(item.appointmentDate, item.appointmentTime)
     : formatDate(item.nextVisitDate);
   return `
-    <article class="visit-record-card">
+    <article class="record-card visit-record-card">
       ${
         visitHistorySelectMode
           ? `<label class="select-check">
@@ -2367,21 +2476,18 @@ function renderAppointmentRecordCard(item) {
             </label>`
           : ""
       }
-      <div class="visit-card-head">
-        <span class="pill scheduled">Appointment</span>
-        ${statusPill(item)}
-      </div>
-      <div class="visit-card-body">
-        <strong class="visit-card-provider">${escapeHtml(item.doctor || "Unknown provider")}</strong>
-        <span class="visit-card-specialty">${escapeHtml(item.specialty || "No specialty saved")}</span>
-        <div class="visit-card-grid">
-          <span><strong>Date</strong>${escapeHtml(dateLabel || "Not set")}</span>
-          <span><strong>Status</strong>${escapeHtml(item.appointmentStatus || "Planned")}</span>
-          <span class="full-span"><strong>Reason</strong>${escapeHtml(item.reasonForVisit || "Not saved")}</span>
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <span class="pill scheduled badge">Appointment</span>
+          <strong class="record-card-provider">${escapeHtml(item.doctor || "Unknown provider")}</strong>
+          <span class="record-card-meta">${escapeHtml(item.specialty || "No specialty saved")} • ${escapeHtml(dateLabel || "Not set")}</span>
+          <p class="record-card-reason">${escapeHtml(item.reasonForVisit || "Not saved")}</p>
         </div>
+        <div class="record-card-badges">${statusPill(item)}</div>
       </div>
-      <div class="visit-card-actions">
+      <div class="record-card-actions">
         <button class="button-secondary" type="button" data-edit-appointment="${item.id}">Edit</button>
+        <button class="button-secondary" type="button" data-log-visit="${item.id}">Log Visit</button>
         <button class="button-delete" type="button" data-delete-appointment="${item.id}">Delete</button>
       </div>
     </article>
@@ -2390,7 +2496,7 @@ function renderAppointmentRecordCard(item) {
 
 function renderVisitLogRecordCard(entry) {
   return `
-    <article class="visit-record-card" data-appointment-log-id="${entry.appointmentId}" data-visit-log-card="${entry.id}">
+    <article class="record-card visit-record-card" data-appointment-log-id="${entry.appointmentId}" data-visit-log-card="${entry.id}">
       ${
         visitHistorySelectMode
           ? `<label class="select-check">
@@ -2399,25 +2505,18 @@ function renderVisitLogRecordCard(entry) {
             </label>`
           : ""
       }
-      <div class="visit-card-head">
-        <span class="pill ok">Visit Log</span>
-        <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
-      </div>
-      <div class="visit-card-body">
-        <strong class="visit-card-provider">${escapeHtml(entry.provider || "Unknown provider")}</strong>
-        <span class="visit-card-specialty">${escapeHtml(entry.specialty || "No specialty saved")}</span>
-        <div class="visit-card-grid">
-          <span><strong>Date</strong>${formatDate(entry.date)}</span>
-          <span><strong>Status</strong>${escapeHtml(entry.status || "Completed")}</span>
-          <span class="full-span"><strong>Reason</strong>${escapeHtml(entry.reason || "Not saved")}</span>
-          ${
-            isValidIsoDate(entry.followUpDueDate)
-              ? `<span class="full-span meta-line"><strong>Follow-up due:</strong> ${formatFollowUpCardDate(entry.followUpDueDate)}</span>`
-              : ""
-          }
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <span class="pill ok badge">Visit Log</span>
+          <strong class="record-card-provider">${escapeHtml(entry.provider || "Unknown provider")}</strong>
+          <span class="record-card-meta">${escapeHtml(entry.specialty || "No specialty saved")} • ${formatDate(entry.date)}</span>
+          <p class="record-card-reason">${escapeHtml(entry.reason || "Not saved")}</p>
+        </div>
+        <div class="record-card-badges">
+          <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
         </div>
       </div>
-      <div class="visit-card-actions">
+      <div class="record-card-actions">
         <button class="button-secondary" type="button" data-edit-visit-log="${entry.id}" data-appointment-id="${entry.appointmentId}">Edit</button>
         <button class="button-delete" type="button" data-delete-visit-log="${entry.id}">Delete</button>
       </div>
@@ -2432,41 +2531,51 @@ function renderInsuranceSummary() {
 
   insuranceSummary.innerHTML = hasInsurance
     ? `
-        <article class="summary-card">
-          <div class="summary-row"><strong>Provider</strong><span>${escapeHtml(insurance.provider || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Plan</strong><span>${escapeHtml(insurance.planName || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Member ID</strong><span>${escapeHtml(insurance.memberId || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Group number</strong><span>${escapeHtml(insurance.groupNumber || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Copay</strong><span>${escapeHtml(insurance.copay || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Phone</strong><span>${escapeHtml(insurance.phone || "Not saved")}</span></div>
-          <div class="summary-row"><strong>Notes</strong><span>${escapeHtml(insurance.notes || "No notes saved")}</span></div>
+        <article class="insurance-snapshot">
+          <span><strong>Provider</strong>${escapeHtml(insurance.provider || "Not saved")}</span>
+          <span><strong>Plan</strong>${escapeHtml(insurance.planName || "Not saved")}</span>
+          <span><strong>Copay</strong>${escapeHtml(insurance.copay || "Not saved")}</span>
+          <span><strong>Phone</strong>${escapeHtml(insurance.phone || "Not saved")}</span>
+          <span><strong>Member ID</strong>${escapeHtml(maskMemberId(insurance.memberId))}</span>
+          ${
+            cleanText(insurance.notes)
+              ? `<span class="full-span"><strong>Notes</strong>${escapeHtml(insurance.notes)}</span>`
+              : ""
+          }
         </article>
       `
-    : `<p class="muted">No insurance information saved yet.</p>`;
+    : `<p class="empty-state-row muted">No insurance info saved yet.</p>`;
 }
 
 function renderCareTeam() {
   if (!careTeamList) return;
-  const providers = getAllProviders();
+  const providers = getActiveProviders();
   careTeamList.innerHTML = providers.length
     ? providers.map((provider) => renderCareTeamProviderCard(provider)).join("")
-    : `<p class="muted">No care team entries yet. Add a provider using the form above.</p>`;
+    : renderEmptyStateRow("No care team entries yet. Add a provider using the form above.");
 }
 
 function renderCareTeamProviderCard(provider) {
-  const notes = provider.notes || provider.address || provider.insuranceAccepted || "No notes saved";
+  const notes = cleanText(provider.notes);
+  const address = cleanText(provider.address);
+  const portalLink = cleanText(provider.portalLink);
   return `
-    <article class="visit-record-card care-team-provider-card" data-provider-card="${escapeHtml(provider.id)}">
-      <div class="visit-card-body">
-        <strong class="visit-card-provider">${escapeHtml(getProviderRecordName(provider))}</strong>
-        <span class="visit-card-specialty">${escapeHtml(provider.specialty || "General")}</span>
-        <div class="visit-card-grid">
-          <span><strong>Clinic</strong>${escapeHtml(provider.clinic || "Not saved")}</span>
-          <span><strong>Phone</strong>${escapeHtml(provider.phone || "Not saved")}</span>
-          <span class="full-span"><strong>Notes</strong>${escapeHtml(notes)}</span>
+    <article class="record-card provider-card" data-provider-card="${escapeHtml(provider.id)}">
+      <div class="provider-card-head">
+        <div>
+          <strong class="record-card-provider">${escapeHtml(getProviderRecordName(provider))}</strong>
+          <span class="pill on-track badge">${escapeHtml(provider.specialty || "General")}</span>
         </div>
       </div>
-      <div class="visit-card-actions">
+      <p class="provider-card-clinic">${escapeHtml(provider.clinic || "No clinic saved")}</p>
+      <div class="provider-info-row">
+        <span><strong>Phone</strong>${escapeHtml(provider.phone || "Not saved")}</span>
+        <span><strong>Address</strong>${escapeHtml(address || "Not saved")}</span>
+        <span><strong>Insurance</strong>${escapeHtml(provider.insuranceAccepted || "Not saved")}</span>
+        <span><strong>Portal</strong>${portalLink ? `<a href="${escapeHtml(portalLink)}" target="_blank" rel="noreferrer">Open portal</a>` : "Not saved"}</span>
+      </div>
+      ${notes ? `<p class="provider-card-notes">${escapeHtml(notes)}</p>` : ""}
+      <div class="record-card-actions">
         <button class="button-secondary" type="button" data-edit-provider="${escapeHtml(provider.id)}">Edit</button>
         <button class="button-delete" type="button" data-delete-provider="${escapeHtml(provider.id)}">Delete</button>
         <button class="button-secondary" type="button" data-delete-provider-logs="${escapeHtml(provider.id)}">Delete Provider Logs</button>
@@ -2477,38 +2586,40 @@ function renderCareTeamProviderCard(provider) {
 
 function renderRecommendations(recommendations) {
   if (!recommendationList) return;
+  const hasRecommendations = recommendations.length > 0;
+  if (homeRecommendationsSection) {
+    homeRecommendationsSection.classList.toggle("is-hidden", !hasRecommendations);
+  }
+  if (!hasRecommendations) {
+    recommendationList.innerHTML = "";
+    return;
+  }
+
   const age = getProfileAge();
-  recommendationList.innerHTML = recommendations.length
-    ? recommendations
-        .map(
-          (item) => `
-            <article class="recommendation-card">
-              <div class="card-head">
-                <div>
-                  <strong>${escapeHtml(item.title)}</strong>
-                  <span class="meta">${escapeHtml(item.specialty)}</span>
-                </div>
-                <span class="pill ok">Suggested</span>
-              </div>
-              <span class="meta">${escapeHtml(item.reason)}</span>
-              <div class="detail-grid">
-                <span><strong>Profile age</strong>${age !== null ? age : "Add date of birth"}</span>
-                <span><strong>Suggested repeat rule</strong>Every ${item.intervalMonths} month${item.intervalMonths === 1 ? "" : "s"}</span>
-              </div>
-              <div class="inline-row">
-                <button class="button-secondary" type="button" data-use-recommendation="${item.key}">Use as template</button>
-                ${
-                  item.sourceUrl
-                    ? `<a class="source-link" href="${item.sourceUrl}" target="_blank" rel="noreferrer">View source</a>`
-                    : `<span class="meta">Baseline template</span>`
-                }
-              </div>
-              <span class="meta">${escapeHtml(item.sourceLabel)}</span>
-            </article>
-          `
-        )
-        .join("")
-    : `<p class="muted">Save your profile to see age- and risk-based suggestions. The app only shows a limited set of guideline-informed examples, not a full care plan.</p>`;
+  recommendationList.innerHTML = recommendations
+    .map(
+      (item) => `
+        <article class="record-card recommendation-card">
+          <div class="record-card-head">
+            <div class="record-card-body">
+              <strong class="record-card-provider">${escapeHtml(item.title)}</strong>
+              <span class="record-card-meta">${escapeHtml(item.specialty)} • Every ${item.intervalMonths} month${item.intervalMonths === 1 ? "" : "s"}</span>
+              <p class="record-card-reason">${escapeHtml(item.reason)}</p>
+            </div>
+            <span class="pill ok badge">Suggested</span>
+          </div>
+          <div class="record-card-actions">
+            <button class="button-secondary" type="button" data-use-recommendation="${item.key}">Use as template</button>
+            ${
+              item.sourceUrl
+                ? `<a class="source-link" href="${item.sourceUrl}" target="_blank" rel="noreferrer">View source</a>`
+                : `<span class="meta">Profile age: ${age !== null ? age : "Add date of birth"}</span>`
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function renderVisitHistoryGlobalList() {
@@ -3619,7 +3730,9 @@ function normalizeProvider(provider) {
 
   return {
     id: cleanText(provider.id) || crypto.randomUUID(),
-    key: cleanText(provider.key) || normalizeLookupKey(`${name}|${specialtyKey}|${clinic || "unspecified"}`),
+    key:
+      cleanText(provider.key) ||
+      getProviderContentKey({ name, doctor: name, specialty: specialtyKey, clinic }),
     name,
     doctor: name,
     specialty,
@@ -4161,41 +4274,42 @@ function renderCarePlanCard(item) {
   const scheduledLine = isValidIsoDate(item.scheduledDate)
     ? formatAppointmentDateTime(item.scheduledDate, item.scheduledTime)
     : "Not scheduled";
+  const notesBlock = cleanText(item.notes)
+    ? `<p class="care-plan-notes">${escapeHtml(item.notes)}</p>`
+    : "";
 
   return `
-    <article class="summary-card care-plan-card status-${escapeHtml(status)}">
-      <div class="card-head">
-        <div>
+    <article class="record-card care-plan-card status-${escapeHtml(status)}">
+      <div class="care-plan-card-head">
+        <div class="care-plan-card-title">
           <strong>${escapeHtml(item.name)}</strong>
-          <span class="meta">${escapeHtml(item.summary || "No summary saved")}</span>
-          <span class="meta">Frequency: ${escapeHtml(item.frequency || "Not set")}</span>
+          <span class="record-card-meta">${escapeHtml(item.category || "General")}</span>
         </div>
         ${carePlanStatusPill(status)}
       </div>
-      <div class="detail-grid">
+      <div class="care-plan-info-grid compact-grid">
         <span><strong>Next due</strong>${escapeHtml(formatCarePlanNextDue(item))}</span>
         <span><strong>Last completed</strong>${formatDate(item.lastCompletedDate)}</span>
         <span><strong>Scheduled</strong>${escapeHtml(scheduledLine)}</span>
         <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}</span>
-        <span><strong>Place</strong>${escapeHtml(item.place || "Not saved")}</span>
-        <span><strong>Notes</strong>${escapeHtml(item.notes || "Not saved")}</span>
       </div>
-      <div class="care-plan-card-actions">
+      ${notesBlock}
+      <div class="care-plan-card-actions actions-row">
         <button class="button-secondary" type="button" data-care-plan-action="edit" data-care-plan-id="${escapeHtml(item.id)}">Edit</button>
         <button class="button-danger-outline" type="button" data-care-plan-action="delete" data-care-plan-id="${escapeHtml(item.id)}">Delete</button>
         <button class="button-primary" type="button" data-care-plan-action="log-visit" data-care-plan-id="${escapeHtml(item.id)}">Log Visit</button>
         <button class="button-secondary" type="button" data-care-plan-action="schedule" data-care-plan-id="${escapeHtml(item.id)}">Schedule Appointment</button>
         <button class="button-secondary" type="button" data-care-plan-action="complete" data-care-plan-id="${escapeHtml(item.id)}">Mark Complete</button>
       </div>
-      <div class="follow-up-section">
-        <p class="eyebrow">Set next due</p>
+      <details class="care-plan-due-details">
+        <summary>Set next due</summary>
         <div class="follow-up-shortcut-row">
           <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-3" data-care-plan-id="${escapeHtml(item.id)}">3 months</button>
           <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-6" data-care-plan-id="${escapeHtml(item.id)}">6 months</button>
           <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-12" data-care-plan-id="${escapeHtml(item.id)}">1 year</button>
           <button type="button" class="button-secondary follow-up-shortcut" data-care-plan-action="due-custom" data-care-plan-id="${escapeHtml(item.id)}">Custom date</button>
         </div>
-      </div>
+      </details>
     </article>
   `;
 }
@@ -4711,6 +4825,31 @@ function addDeletedSeedKey(appointment) {
   if (!state.deletedSeedKeys.includes(seedKey)) {
     state.deletedSeedKeys.push(seedKey);
   }
+}
+
+function addDeletedProviderKey(provider) {
+  const contentKey = getProviderContentKey(provider);
+  if (!contentKey) {
+    return;
+  }
+  state.deletedSeedKeys = Array.isArray(state.deletedSeedKeys) ? state.deletedSeedKeys : [];
+  if (!state.deletedSeedKeys.includes(contentKey)) {
+    state.deletedSeedKeys.push(contentKey);
+  }
+  const storedKey = cleanText(provider?.key);
+  if (storedKey && !state.deletedSeedKeys.includes(storedKey)) {
+    state.deletedSeedKeys.push(storedKey);
+  }
+}
+
+function removeDeletedProviderKey(providerKey) {
+  const normalizedKey = normalizeLookupKey(providerKey);
+  if (!normalizedKey) {
+    return;
+  }
+  state.deletedSeedKeys = (state.deletedSeedKeys || []).filter(
+    (item) => normalizeLookupKey(item) !== normalizedKey
+  );
 }
 
 function restoreProviderSelectValue(select, previousValue) {

@@ -1,7 +1,7 @@
 :root {
   --bg: #f4efe8;
   --bg-soft: #fbf7f2;
-  --panel: rgba(255, 252, 247, 0.92);
+  --panel: rgba(255, 252, 247, 0.96);
   --text: #1f2933;
   --muted: #5f6c77;
   --line: rgba(49, 68, 82, 0.14);
@@ -11,8 +11,12 @@
   --danger: #b42318;
   --warn: #a16207;
   --success: #1f7a4d;
-  --shadow: 0 18px 40px rgba(30, 41, 59, 0.12);
-  --radius: 24px;
+  --shadow: 0 10px 28px rgba(30, 41, 59, 0.08);
+  --radius: 20px;
+  --radius-lg: 24px;
+  --section-padding: 28px;
+  --card-gap: 16px;
+  --input-gap: 14px;
 }
 
 * {
@@ -31,48 +35,59 @@ body {
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 32px));
+  width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 20px 0 32px;
+  padding: 24px 0 40px;
 }
 
+.section-card,
 .hero,
 .panel,
 .stat-card,
-.appointment-card,
-.reminder-card,
-.summary-card,
-.recommendation-card,
+.record-card,
 .preview-card {
   border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.section-card,
+.hero,
+.panel {
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
 }
 
-.hero,
-.panel {
-  border-radius: 32px;
-  background: var(--panel);
-  backdrop-filter: blur(14px);
-}
-
-.hero {
+.hero-grid {
   display: grid;
-  grid-template-columns: 1.35fr 0.9fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 24px;
-  padding: 22px;
+  padding: var(--section-padding);
 }
 
-.hero h1,
-.section-heading h2 {
+.hero-intro h1,
+.section-heading h2,
+.section-heading h3 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 700;
 }
 
-.hero h1 {
-  font-size: clamp(2rem, 3.2vw, 3.2rem);
-  line-height: 0.95;
-  max-width: 10ch;
+.hero-intro h1 {
+  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  line-height: 1.15;
+  max-width: 18ch;
+}
+
+.section-heading h2 {
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+  line-height: 1.2;
+}
+
+.subsection-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary-deep);
 }
 
 .hero-copy,
@@ -83,22 +98,32 @@ body {
 }
 
 .hero-copy {
-  max-width: 58ch;
-  line-height: 1.6;
+  max-width: 52ch;
+  line-height: 1.55;
+  margin-top: 12px;
 }
 
-.hero-panel,
+.hero-side,
 .card-list,
-.stats-grid {
+.stats-grid,
+.compact-list,
+.provider-card-grid {
   display: grid;
-  gap: 14px;
+  gap: var(--card-gap);
+}
+
+.hero-stats-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-action-button {
+  width: 100%;
 }
 
 .hero-dropdown {
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: none;
 }
 
 .hero-dropdown-button {
@@ -120,25 +145,47 @@ body {
 
 .stat-card,
 .preview-card,
-.appointment-card,
-.reminder-card,
-.summary-card,
-.recommendation-card {
-  padding: 18px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.75);
+.record-card,
+.recommendation-card,
+.summary-card {
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: none;
 }
 
-.stat-card span,
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 112px;
+}
+
+.stat-label,
 .summary-row span,
 .meta {
   display: block;
 }
 
+.stat-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.stat-value {
+  display: block;
+  margin: 0;
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  line-height: 1;
+}
+
 .stat-card strong {
   display: block;
-  margin-top: 6px;
-  font-size: 1.8rem;
+  margin-top: 0;
+  font-size: inherit;
 }
 
 .tabbar {
@@ -178,90 +225,85 @@ textarea {
 }
 
 .screen-stack {
-  margin-top: 22px;
-}
-
-.subtabbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.subtab-button {
-  color: var(--primary-deep);
-  background: rgba(15, 118, 110, 0.08);
-}
-
-.subtab-button.is-active {
-  color: white;
-  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
-}
-
-.app-screen {
-  display: none;
-  gap: 22px;
-}
-
-.app-screen.is-active {
-  display: grid;
+  margin-top: 18px;
 }
 
 .panel {
-  padding: 24px;
-}
-
-.subview-panel {
-  display: none;
-}
-
-.subview-panel.is-active {
-  display: block;
+  padding: var(--section-padding);
 }
 
 .section-heading {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+}
+
+.compact-heading {
+  margin-bottom: 14px;
 }
 
 .eyebrow {
-  margin: 0 0 10px;
-  font-size: 0.76rem;
+  margin: 0 0 8px;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   color: var(--primary);
 }
 
 .stats-grid {
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
-.quick-action-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.home-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.home-action-grid,
+.quick-actions-grid,
 .home-status-grid {
   display: grid;
-  gap: 16px;
+  gap: var(--card-gap);
   margin-bottom: 18px;
 }
 
-.home-action-grid {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+.quick-actions-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.home-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.dashboard-subsection {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.dashboard-subsection-wide {
+  grid-column: 1 / -1;
+}
+
+.dashboard-subsection .compact-list {
+  gap: 10px;
+}
+
+.action-card {
+  min-height: 72px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  padding: 16px;
+  text-align: left;
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: grid;
+  place-content: center;
+  box-shadow: none;
 }
 
 .care-plan-filter-row {
@@ -278,7 +320,7 @@ textarea {
 
 .care-plan-groups {
   display: grid;
-  gap: 22px;
+  gap: 18px;
 }
 
 .care-plan-category {
@@ -287,17 +329,27 @@ textarea {
 }
 
 .care-plan-category h3 {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   margin: 0;
-  font-size: 1.05rem;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
   color: var(--primary-deep);
+  background: rgba(251, 247, 242, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 12px;
 }
 
 .care-plan-card {
-  border-left: 4px solid var(--primary);
+  border-left: 3px solid var(--primary);
+  padding: 14px 16px;
 }
 
 .care-plan-card.status-overdue {
   border-left-color: var(--danger);
+  background: rgba(180, 35, 24, 0.04);
 }
 
 .care-plan-card.status-due-soon {
@@ -312,7 +364,54 @@ textarea {
   border-left-color: rgba(49, 68, 82, 0.35);
 }
 
-.care-plan-card-actions {
+.care-plan-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.care-plan-card-title {
+  display: grid;
+  gap: 4px;
+}
+
+.care-plan-card-title strong {
+  font-size: 1rem;
+}
+
+.care-plan-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.care-plan-info-grid span {
+  display: grid;
+  gap: 2px;
+  font-size: 0.92rem;
+}
+
+.care-plan-info-grid strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.care-plan-notes {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.care-plan-card-actions,
+.actions-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -321,36 +420,27 @@ textarea {
 .care-plan-card-actions .button-secondary,
 .care-plan-card-actions .button-primary,
 .care-plan-card-actions .button-danger-outline {
-  padding: 10px 14px;
-  font-size: 0.86rem;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+
+.care-plan-due-details {
+  margin-top: 8px;
+}
+
+.care-plan-due-details summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--primary-deep);
 }
 
 .care-plan-panel.is-hidden {
   display: none !important;
 }
 
-.home-status-grid {
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
-}
-
-.action-card {
-  min-height: 130px;
-  border-radius: 28px;
-  border: 1px solid var(--line);
-  padding: 24px;
-  text-align: left;
-  font-size: 1.05rem;
-  font-weight: 800;
-  display: grid;
-  place-content: center;
-}
-
-.action-card.button-secondary {
-  background: rgba(247, 244, 241, 0.95);
-}
-
-.home-section {
-  margin-top: 0;
+.visits-record-count {
+  margin: 0 0 12px;
 }
 
 .visits-action-bar,
@@ -358,7 +448,7 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .provider-select-row {
@@ -374,8 +464,35 @@ textarea {
   white-space: nowrap;
 }
 
-.care-team-provider-list {
+.care-team-provider-list,
+.provider-card-grid {
   scroll-margin-top: 24px;
+}
+
+.provider-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.collapsible-form {
+  margin-bottom: 18px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.collapsible-form-toggle {
+  display: block;
+  padding: 14px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.collapsible-form-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-form .form-grid {
+  padding: 0 18px 18px;
 }
 
 #providerForm {
@@ -427,14 +544,154 @@ textarea {
   font-size: 0.88rem;
 }
 
-.visit-record-card {
+.visit-record-card,
+.record-card {
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 20px;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: none;
+}
+
+.record-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.record-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.record-card-body {
+  display: grid;
+  gap: 4px;
+}
+
+.record-card-provider {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.record-card-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.record-card-reason {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.record-card-summary {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.record-card-actions,
+.visit-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-card {
+  display: grid;
+  gap: 10px;
+}
+
+.provider-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.provider-card-clinic {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.provider-info-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  font-size: 0.88rem;
+}
+
+.provider-info-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.provider-info-row strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.provider-card-notes {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.insurance-snapshot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.insurance-snapshot span {
+  display: grid;
+  gap: 2px;
+}
+
+.insurance-snapshot strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.insurance-snapshot-heading {
+  margin-top: 22px;
+}
+
+.insurance-form-grid {
+  margin-bottom: 8px;
+}
+
+.empty-state-row {
+  padding: 10px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45);
+  font-size: 0.92rem;
+}
+
+.badge,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .visit-card-head {
@@ -493,30 +750,27 @@ textarea {
   margin-bottom: 18px;
 }
 
-.timeline-list,
-.card-list {
+.provider-card-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.card-list,
+#appointmentList,
+.compact-list {
   display: grid;
-  gap: 14px;
+  gap: var(--card-gap);
 }
 
 .timeline-card {
   position: relative;
-  padding: 18px 18px 18px 26px;
-  border-radius: 24px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.86);
+  padding: 14px 16px;
 }
 
 .timeline-card::before {
-  content: "";
-  position: absolute;
-  left: 12px;
-  top: 24px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--primary);
-  box-shadow: 0 0 0 6px rgba(15, 118, 110, 0.12);
+  display: none;
 }
 
 .timeline-card-meta {
@@ -577,8 +831,7 @@ textarea {
 }
 
 @media (max-width: 720px) {
-  .home-action-grid,
-  .home-status-grid {
+  .quick-actions-grid {
     grid-template-columns: 1fr;
   }
 
@@ -595,10 +848,20 @@ textarea {
   }
 }
 
-.form-grid {
+.form-grid,
+.compact-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--input-gap);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(95, 108, 119, 0.55);
+}
+
+.insurance-snapshot .full-span {
+  grid-column: 1 / -1;
 }
 
 .visit-log-form {
@@ -930,20 +1193,33 @@ button {
   display: none !important;
 }
 
-@media (max-width: 840px) {
-  .hero,
-  .form-grid {
+@media (max-width: 768px) {
+  .hero-grid,
+  .form-grid,
+  .compact-grid,
+  .dashboard-grid,
+  .home-status-grid,
+  .care-plan-info-grid,
+  .provider-info-row,
+  .insurance-snapshot,
+  .provider-card-grid {
     grid-template-columns: 1fr;
   }
 
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .app-shell {
-    width: min(100% - 20px, 1120px);
+    width: min(100% - 20px, 1180px);
     padding-top: 20px;
   }
 
   .section-heading,
   .card-head,
-  .summary-row {
+  .summary-row,
+  .record-card-head,
+  .provider-card-head {
     flex-direction: column;
     align-items: stretch;
   }
@@ -957,5 +1233,4 @@ button {
   .subtab-button {
     flex: 0 0 auto;
   }
-
 }
