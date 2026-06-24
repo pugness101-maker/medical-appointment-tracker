@@ -640,7 +640,6 @@ const providerFormCancelButton = document.querySelector("#providerFormCancelButt
 const visitLogQuickTemplate = document.querySelector("#visitLogQuickTemplate");
 const visitLogSpecialtySelect = document.querySelector("#visitLogSpecialtySelect");
 const visitLogCustomSpecialtyLabel = document.querySelector("#visitLogCustomSpecialtyLabel");
-const visitLogQuickSaveButton = document.querySelector("#visitLogQuickSaveButton");
 const visitLogSaveAddAnotherButton = document.querySelector("#visitLogSaveAddAnotherButton");
 const visitLogSaveFollowUpButton = document.querySelector("#visitLogSaveFollowUpButton");
 const visitLogLastAppointmentInfo = document.querySelector("#visitLogLastAppointmentInfo");
@@ -689,6 +688,7 @@ const homeCarePlanAction = document.querySelector("#homeCarePlanAction");
 let editingAppointmentId = "";
 let activeRecordView = "list";
 let editingVisitLogId = "";
+let visitLogSaveInProgress = false;
 let editingVisitHistory = [];
 let inlineEditingVisitLogId = "";
 let activeAddEditMode = "appointment";
@@ -720,7 +720,6 @@ migrateProvidersInPlace();
 mergeInitialAppointmentLogs();
 mergeInitialCarePlan();
 syncForms();
-mountVisitLogForm();
 showVisitsList();
 render();
 renderVisitHistoryGlobalList();
@@ -745,7 +744,6 @@ function bindEvents() {
     });
   }
   on(visitLogQuickTemplate, "change", handleVisitLogTemplateChange);
-  on(visitLogQuickSaveButton, "click", () => saveVisitLog({ addAnother: false }));
   on(visitLogSaveAddAnotherButton, "click", () => saveVisitLog({ addAnother: true }));
   if (visitLogSaveFollowUpButton) {
     on(visitLogSaveFollowUpButton, "click", () => saveVisitLog({ addAnother: false, scheduleFollowUp: true }));
@@ -1002,12 +1000,6 @@ function openVisitLogTab(appointmentId = "", setToday = false) {
     }
   } else {
     resetVisitLogForm();
-  }
-}
-
-function mountVisitLogForm() {
-  if (visitLogFormMount && visitLogForm.parentElement !== visitLogFormMount) {
-    visitLogFormMount.appendChild(visitLogForm);
   }
 }
 
@@ -2856,11 +2848,23 @@ function loadVisitLogIntoEditor(visitLogId) {
   visitLogForm.elements.followUpNeeded.value = log.followUpNeeded || "";
   visitLogForm.elements.followUpDueDate.value = log.followUpDueDate || "";
   visitLogForm.elements.costCopay.value = log.costCopay || "";
-  visitLogSubmitButton.textContent = "Update Visit Log";
-  visitLogCancelButton.classList.remove("is-hidden");
   visitLogFormTitle.textContent = "Edit visit log";
   syncVisitLogCustomSpecialtyVisibility();
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
+  syncVisitLogFormMode();
+}
+
+function syncVisitLogFormMode() {
+  const isEditing = Boolean(editingVisitLogId);
+  if (visitLogSubmitButton) {
+    visitLogSubmitButton.textContent = isEditing ? "Update Visit Log" : "Save Visit Log";
+  }
+  if (visitLogCancelButton) {
+    visitLogCancelButton.classList.toggle("is-hidden", !isEditing);
+  }
+  document.querySelectorAll(".visit-log-add-only").forEach((button) => {
+    button.classList.toggle("is-hidden", isEditing);
+  });
 }
 
 function resetVisitLogForm() {
@@ -2869,8 +2873,6 @@ function resetVisitLogForm() {
   visitLogForm.elements.visitLogAppointmentId.value = "";
   visitLogForm.elements.visitLogId.value = "";
   visitLogProviderSelect.value = "";
-  visitLogSubmitButton.textContent = "Save Visit Log";
-  visitLogCancelButton.classList.add("is-hidden");
   visitLogFormTitle.textContent = "Add visit log";
   syncVisitLogCustomSpecialtyVisibility();
   if (visitLogFollowUpHint) {
@@ -2878,6 +2880,7 @@ function resetVisitLogForm() {
     visitLogFollowUpHint.classList.add("is-hidden");
   }
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
+  syncVisitLogFormMode();
 }
 
 function syncVisitLogProviderSelection() {
@@ -2992,6 +2995,7 @@ function applyVisitLogPreset(presetKey) {
 function resetVisitLogFormExceptProvider() {
   const providerValue = visitLogProviderSelect.value;
   const context = getVisitLogProviderContext(providerValue);
+  editingVisitLogId = "";
   visitLogForm.reset();
   visitLogForm.elements.visitLogAppointmentId.value = context?.linkedAppointmentId || "";
   visitLogProviderSelect.value = providerValue;
@@ -3006,21 +3010,26 @@ function resetVisitLogFormExceptProvider() {
   visitLogForm.elements.status.value = "Completed";
   visitLogQuickTemplate.value = "";
   visitLogFormTitle.textContent = "Add visit log";
-  visitLogCancelButton.classList.add("is-hidden");
-  visitLogForm.elements.summary.placeholder = "What happened at the visit?";
   if (visitLogFollowUpHint) {
     visitLogFollowUpHint.textContent = "";
     visitLogFollowUpHint.classList.add("is-hidden");
   }
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogProviderSelection();
+  syncVisitLogFormMode();
 }
 
 function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
+  if (visitLogSaveInProgress) {
+    return false;
+  }
+  visitLogSaveInProgress = true;
+
   const formData = new FormData(visitLogForm);
   const selection = cleanText(visitLogProviderSelect.value) || cleanText(formData.get("visitLogAppointmentId"));
   const context = getVisitLogProviderContext(selection);
   if (!context?.provider) {
+    visitLogSaveInProgress = false;
     visitHistoryGlobalList.innerHTML = `<p class="muted">Choose a provider to log this visit.</p>`;
     return false;
   }
@@ -3029,7 +3038,7 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     cleanText(formData.get("specialty")) === "__custom__"
       ? cleanText(formData.get("customSpecialty"))
       : cleanText(formData.get("specialty")) || context.specialty;
-  const logId = cleanText(formData.get("visitLogId")) || crypto.randomUUID();
+  const logId = cleanText(formData.get("visitLogId")) || editingVisitLogId || crypto.randomUUID();
   const nextLog = normalizeVisitLog({
     id: logId,
     providerId: context.providerId,
@@ -3054,6 +3063,7 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     visitLogForm.elements.followUpDueDate.setCustomValidity("Add a follow-up due date before scheduling.");
     visitLogForm.elements.followUpDueDate.reportValidity();
     visitLogForm.elements.followUpDueDate.setCustomValidity("");
+    visitLogSaveInProgress = false;
     return false;
   }
 
@@ -3063,11 +3073,13 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     state.visitLogs[existingIndex] = {
       ...state.visitLogs[existingIndex],
       ...nextLog,
+      id: logId,
       updatedAt: new Date().toISOString(),
     };
   } else {
     state.visitLogs.unshift({
       ...nextLog,
+      id: logId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -3087,6 +3099,7 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     showVisitsList();
   }
   render();
+  visitLogSaveInProgress = false;
   return true;
 }
 

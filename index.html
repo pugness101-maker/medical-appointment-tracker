@@ -474,62 +474,30 @@
               </div>
               <button id="visitLogFormBack" class="button-secondary" type="button">← Back to Visits</button>
             </div>
-            <div id="visitLogFormMount"></div>
-            <form id="visitLogForm" class="form-grid">
+            <div id="visitLogFormMount">
+            <form id="visitLogForm" class="form-grid visit-log-form">
               <input type="hidden" name="visitLogAppointmentId" />
               <input type="hidden" name="visitLogId" />
-              <div class="quick-log-panel full-span">
-                <div class="section-heading">
-                  <div>
-                    <p class="eyebrow">Quick Log</p>
-                    <h3>Fast visit log entry</h3>
-                    <p class="meta">Choose a care team provider. Use Quick template for visit type presets—not for picking a provider.</p>
-                  </div>
-                </div>
-                <div class="form-grid quick-log-grid">
-                  <div class="provider-select-row full-span">
-                    <label>
-                      Provider
-                      <select name="provider" id="visitLogProviderSelect"></select>
-                    </label>
-                    <button id="editProvidersButton" class="button-secondary button-compact" type="button">Edit Providers</button>
-                  </div>
-                  <label>
-                    Visit date
-                    <input type="date" name="date" />
-                  </label>
-                  <label>
-                    Quick template
-                    <select id="visitLogQuickTemplate" name="quickTemplate">
-                      <option value="">Choose template</option>
-                      <option value="annual-checkup">Annual checkup</option>
-                      <option value="dental-cleaning">Dental cleaning</option>
-                      <option value="eye-exam">Eye exam</option>
-                      <option value="lab-review">Lab review</option>
-                      <option value="medication-refill">Medication refill</option>
-                      <option value="follow-up">Follow-up</option>
-                      <option value="sick-visit">Sick visit</option>
-                      <option value="screening">Screening</option>
-                      <option value="custom">Custom</option>
-                    </select>
-                  </label>
-                  <label>
-                    Status
-                    <select name="status">
-                      <option>Completed</option>
-                      <option>Waiting on results</option>
-                      <option>Follow-up needed</option>
-                      <option>Resolved</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="inline-row quick-log-actions">
-                  <button id="visitLogQuickSaveButton" class="button-primary" type="button">Save Quick Log</button>
-                  <button id="visitLogSaveFollowUpButton" class="button-secondary" type="button">Save + Schedule Follow-up</button>
-                  <button id="visitLogSaveAddAnotherButton" class="button-secondary" type="button">Save & Add Another</button>
-                </div>
-                <p id="visitLogLastAppointmentInfo" class="meta">Choose a provider to autofill clinic, specialty, and reason.</p>
+              <div class="provider-select-row full-span">
+                <label>
+                  Provider
+                  <select name="provider" id="visitLogProviderSelect"></select>
+                </label>
+                <button id="editProvidersButton" class="button-secondary button-compact" type="button">Edit Providers</button>
               </div>
+              <label>
+                Visit date
+                <input type="date" name="date" />
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option>Completed</option>
+                  <option>Waiting on results</option>
+                  <option>Follow-up needed</option>
+                  <option>Resolved</option>
+                </select>
+              </label>
               <label>
                 Clinic
                 <input type="text" name="clinic" placeholder="Clinic name or address" />
@@ -546,6 +514,22 @@
                 Reason
                 <input type="text" name="reason" placeholder="Annual checkup, follow-up, screening" />
               </label>
+              <label class="full-span">
+                Quick template
+                <select id="visitLogQuickTemplate" name="quickTemplate">
+                  <option value="">Choose template</option>
+                  <option value="annual-checkup">Annual checkup</option>
+                  <option value="dental-cleaning">Dental cleaning</option>
+                  <option value="eye-exam">Eye exam</option>
+                  <option value="lab-review">Lab review</option>
+                  <option value="medication-refill">Medication refill</option>
+                  <option value="follow-up">Follow-up</option>
+                  <option value="sick-visit">Sick visit</option>
+                  <option value="screening">Screening</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <p id="visitLogLastAppointmentInfo" class="meta full-span">Choose a provider to autofill clinic, specialty, and reason.</p>
               <div class="follow-up-section full-span">
                 <p class="eyebrow">Follow-up</p>
                 <p id="visitLogFollowUpHint" class="meta follow-up-hint is-hidden"></p>
@@ -588,11 +572,14 @@
                   </label>
                 </div>
               </details>
-              <div class="inline-row full-span">
+              <div class="inline-row full-span visit-log-actions">
                 <button id="visitLogSubmitButton" class="button-primary" type="submit">Save Visit Log</button>
+                <button id="visitLogSaveFollowUpButton" class="button-secondary visit-log-add-only" type="button">Save + Schedule Follow-up</button>
+                <button id="visitLogSaveAddAnotherButton" class="button-secondary visit-log-add-only" type="button">Save & Add Another</button>
                 <button id="visitLogCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
               </div>
             </form>
+            </div>
             <div id="visitHistoryGlobalList" class="card-list empty-state is-hidden"></div>
           </section>
         </section>

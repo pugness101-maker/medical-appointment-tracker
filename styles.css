@@ -601,13 +601,11 @@ textarea {
   gap: 16px;
 }
 
-.quick-log-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+.visit-log-form {
+  margin-top: 4px;
 }
 
-.quick-log-actions {
+.visit-log-actions {
   justify-content: flex-start;
   gap: 12px;
 }
