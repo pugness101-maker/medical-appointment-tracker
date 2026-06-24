@@ -685,6 +685,12 @@ const carePlanCancelButton = document.querySelector("#carePlanCancelButton");
 const carePlanNextDueHint = document.querySelector("#carePlanNextDueHint");
 const carePlanProviderSelect = document.querySelector("#carePlanProviderSelect");
 const carePlanDeleteButton = document.querySelector("#carePlanDeleteButton");
+const carePlanConnectedVisitLogs = document.querySelector("#carePlanConnectedVisitLogs");
+const carePlanAvailableVisitLogs = document.querySelector("#carePlanAvailableVisitLogs");
+const carePlanVisitLogSearch = document.querySelector("#carePlanVisitLogSearch");
+const carePlanAutoLinkButton = document.querySelector("#carePlanAutoLinkButton");
+const visitLogCarePlanSelect = document.querySelector("#visitLogCarePlanSelect");
+const visitLogCarePlanHint = document.querySelector("#visitLogCarePlanHint");
 const homeCarePlanAction = document.querySelector("#homeCarePlanAction");
 
 let editingAppointmentId = "";
@@ -705,6 +711,7 @@ let editingProviderId = "";
 let pendingProviderSelection = null;
 let activeCarePlanFilter = "all";
 let editingCarePlanId = "";
+let editingCarePlanLinkedVisitLogIds = [];
 let pendingCarePlanItemId = "";
 let activeTab = "dashboard";
 
@@ -755,6 +762,7 @@ bindEvents();
 migrateProvidersInPlace();
 mergeInitialAppointmentLogs();
 mergeInitialCarePlan();
+migrateCarePlanVisitLogLinks();
 syncForms();
 showVisitsList();
 initTabFromHash();
@@ -896,6 +904,7 @@ function bindEvents() {
   }
   if (carePlanForm) {
     on(carePlanForm, "submit", handleCarePlanSubmit);
+    on(carePlanForm, "click", handleCarePlanFormClick);
     on(carePlanForm, "click", handleCarePlanDueShortcutClick);
     if (carePlanForm.elements.lastCompletedDate) {
       on(carePlanForm.elements.lastCompletedDate, "change", () => syncCarePlanDueShortcutButtons());
@@ -916,6 +925,12 @@ function bindEvents() {
   }
   if (carePlanSearchInput) {
     on(carePlanSearchInput, "input", render);
+  }
+  if (carePlanVisitLogSearch) {
+    on(carePlanVisitLogSearch, "input", renderCarePlanConnectedVisitLogsEditor);
+  }
+  if (carePlanAutoLinkButton) {
+    on(carePlanAutoLinkButton, "click", handleCarePlanAutoLinkClick);
   }
   carePlanFilterButtons.forEach((button) => {
     if (button) {
@@ -976,8 +991,17 @@ function bindEvents() {
   on(specialtySelect, "change", syncCustomFieldVisibility);
   on(reasonSelect, "change", syncCustomFieldVisibility);
   on(providerSpecialtySelect, "change", syncProviderCustomSpecialtyVisibility);
-  on(visitLogProviderSelect, "change", syncVisitLogProviderSelection);
-  on(visitLogSpecialtySelect, "change", syncVisitLogCustomSpecialtyVisibility);
+  on(visitLogProviderSelect, "change", () => {
+    syncVisitLogProviderSelection();
+    renderVisitLogCarePlanSelect();
+  });
+  on(visitLogSpecialtySelect, "change", () => {
+    syncVisitLogCustomSpecialtyVisibility();
+    renderVisitLogCarePlanSelect();
+  });
+  if (visitLogForm?.elements.reason) {
+    on(visitLogForm.elements.reason, "input", renderVisitLogCarePlanSelect);
+  }
   window.addEventListener("hashchange", handleHashChange);
   if (repeatVisitToggle) {
     on(repeatVisitToggle, "change", () => {
@@ -2999,6 +3023,7 @@ function loadVisitLogIntoEditor(visitLogId) {
   syncVisitLogCustomSpecialtyVisibility();
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogFormMode();
+  renderVisitLogCarePlanSelect();
 }
 
 function syncVisitLogFormMode() {
@@ -3028,6 +3053,7 @@ function resetVisitLogForm() {
   }
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogFormMode();
+  renderVisitLogCarePlanSelect();
 }
 
 function syncVisitLogProviderSelection() {
@@ -3058,6 +3084,7 @@ function syncVisitLogProviderSelection() {
   renderVisitHistoryGlobalList();
   renderVisitLogProviderInfo(context);
   syncVisitLogCustomSpecialtyVisibility();
+  renderVisitLogCarePlanSelect();
 }
 
 function renderVisitLogProviderInfo(context) {
@@ -3100,8 +3127,9 @@ function applyVisitLogTemplate(templateKey) {
   const dateValue = cleanText(visitLogForm.elements.date.value);
   if (dateValue && template.followUpDueMonths && !cleanText(visitLogForm.elements.followUpDueDate.value)) {
     visitLogForm.elements.followUpDueDate.value = addMonths(dateValue, template.followUpDueMonths);
-    syncFollowUpShortcutButtons(visitLogForm, "follow-up");
-  }
+  syncFollowUpShortcutButtons(visitLogForm, "follow-up");
+  renderVisitLogCarePlanSelect();
+}
 }
 
 function handleVisitLogFormClick(event) {
@@ -3164,6 +3192,7 @@ function resetVisitLogFormExceptProvider() {
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogProviderSelection();
   syncVisitLogFormMode();
+  renderVisitLogCarePlanSelect();
 }
 
 function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
@@ -3215,7 +3244,6 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
   }
 
   const existingIndex = state.visitLogs.findIndex((log) => log.id === logId);
-  const isNewVisitLog = existingIndex < 0;
   if (existingIndex >= 0) {
     state.visitLogs[existingIndex] = {
       ...state.visitLogs[existingIndex],
@@ -3232,10 +3260,10 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     });
   }
 
-  const carePlanItemId = pendingCarePlanItemId;
-  if (carePlanItemId && isNewVisitLog) {
-    applyCarePlanVisitLogCompletion(carePlanItemId, nextLog.date);
-  }
+  const selectedCarePlanIds = visitLogCarePlanSelect
+    ? [...visitLogCarePlanSelect.selectedOptions].map((option) => option.value).filter(Boolean)
+    : [];
+  syncVisitLogCarePlanLinks(logId, selectedCarePlanIds);
 
   persist();
   if (addAnother) {
@@ -3931,11 +3959,472 @@ function normalizeCarePlanItem(item, providers = state.providers || []) {
     providerId,
     providerName,
     provider: providerName,
+    linkedVisitLogIds: normalizeStringArray(item?.linkedVisitLogIds),
+    linkedProviderIds: normalizeStringArray(item?.linkedProviderIds),
+    providerMode: item?.providerMode === "multiple" ? "multiple" : "single",
     place: cleanText(item.place),
     notes: cleanText(item.notes),
     isOptional: Boolean(item.isOptional),
     createdAt: cleanText(item.createdAt) || new Date().toISOString(),
     updatedAt: cleanText(item.updatedAt) || "",
+  };
+}
+
+const CARE_PLAN_CATEGORY_MATCH_RULES = [
+  {
+    keys: ["mental health"],
+    terms: ["therapist", "therapy", "mental health", "psychiatrist", "psychologist", "counseling", "counselling"],
+  },
+  {
+    keys: ["women's health", "womens health", "ob-gyn", "obgyn"],
+    terms: ["ob-gyn", "obgyn", "women's health", "womens health", "gynecology", "gynaecology"],
+  },
+  {
+    keys: ["dental"],
+    terms: ["dentist", "dental", "dental cleaning"],
+  },
+  {
+    keys: ["vision", "eye"],
+    terms: ["eye doctor", "vision", "optometry", "eye exam", "ophthalmology"],
+  },
+  {
+    keys: ["sexual health", "sti", "std"],
+    terms: ["sti", "std", "sexual health", "planned parenthood", "public health", "screening"],
+  },
+  {
+    keys: ["vaccines", "labs", "bloodwork", "vaccine"],
+    terms: ["labs", "bloodwork", "lab review", "vaccine", "vaccination", "immunization", "pcp", "primary care"],
+  },
+  {
+    keys: ["annual reset", "annual"],
+    terms: ["annual", "primary care", "pcp", "checkup", "check-up"],
+  },
+  {
+    keys: ["dermatology", "dermatologist"],
+    terms: ["dermatologist", "dermatology", "skin"],
+  },
+  {
+    keys: ["medication", "medications"],
+    terms: ["medication", "refill", "psychiatry", "prescription"],
+  },
+];
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return [...new Set(value.map((item) => cleanText(item)).filter(Boolean))];
+}
+
+function getCarePlanCategoryMatchTerms(item) {
+  const category = cleanText(item?.category).toLowerCase();
+  const name = cleanText(item?.name).toLowerCase();
+  const summary = cleanText(item?.summary).toLowerCase();
+  const combined = `${category} ${name} ${summary}`.trim();
+
+  for (const rule of CARE_PLAN_CATEGORY_MATCH_RULES) {
+    if (rule.keys.some((key) => combined.includes(key) || key.includes(category) || category.includes(key))) {
+      return rule.terms;
+    }
+  }
+
+  return [category, name, summary].filter(Boolean);
+}
+
+function getVisitLogSearchHaystack(log) {
+  return [
+    log.date,
+    log.provider,
+    log.specialty,
+    log.clinic,
+    log.reason,
+    log.summary,
+    log.results,
+    log.status,
+  ]
+    .map((value) => cleanText(value).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function visitLogMatchesCarePlanItem(log, item) {
+  const terms = getCarePlanCategoryMatchTerms(item);
+  const haystack = getVisitLogSearchHaystack(log);
+  if (!haystack || !terms.length) {
+    return false;
+  }
+  return terms.some((term) => {
+    const normalizedTerm = cleanText(term).toLowerCase();
+    return normalizedTerm && haystack.includes(normalizedTerm);
+  });
+}
+
+function getCarePlanConnectedLogs(item) {
+  const ids = normalizeStringArray(item?.linkedVisitLogIds);
+  return state.visitLogs
+    .filter((log) => ids.includes(log.id))
+    .sort((a, b) => compareOptionalDates(b.date, a.date));
+}
+
+function getCarePlanCompletedLogs(item) {
+  return getCarePlanConnectedLogs(item).filter(
+    (log) => isValidIsoDate(log.date) && cleanText(log.status || "Completed") === "Completed"
+  );
+}
+
+function getCarePlanDerivedLastCompleted(item) {
+  const connected = getCarePlanCompletedLogs(item);
+  if (connected.length) {
+    return connected[0].date;
+  }
+  return cleanText(item?.lastCompletedDate);
+}
+
+function syncCarePlanDerivedFields(item) {
+  if (!item) {
+    return item;
+  }
+
+  item.linkedVisitLogIds = normalizeStringArray(item.linkedVisitLogIds);
+  item.linkedProviderIds = normalizeStringArray(item.linkedProviderIds);
+  const connectedLogs = getCarePlanConnectedLogs(item);
+  const completedLogs = getCarePlanCompletedLogs(item);
+
+  if (completedLogs.length) {
+    item.lastCompletedDate = completedLogs[0].date;
+  }
+
+  const providerIds = new Set(item.linkedProviderIds);
+  const providerNames = new Set();
+  connectedLogs.forEach((log) => {
+    if (log.providerId) {
+      providerIds.add(log.providerId);
+    }
+    if (log.provider) {
+      providerNames.add(log.provider);
+    }
+  });
+
+  item.linkedProviderIds = [...providerIds];
+  item.providerMode = providerIds.size > 1 || providerNames.size > 1 ? "multiple" : "single";
+
+  if (item.providerMode === "single" && completedLogs[0]) {
+    if (completedLogs[0].providerId && !item.providerId) {
+      item.providerId = completedLogs[0].providerId;
+    }
+    if (completedLogs[0].provider && !item.providerName) {
+      item.providerName = completedLogs[0].provider;
+      item.provider = completedLogs[0].provider;
+    }
+  }
+
+  return item;
+}
+
+function getCarePlanLinkedProviderNames(item) {
+  const names = new Set();
+  getCarePlanConnectedLogs(item).forEach((log) => {
+    if (log.provider) {
+      names.add(log.provider);
+    }
+  });
+  if (!names.size && item?.providerName) {
+    names.add(item.providerName);
+  }
+  if (!names.size && item?.provider) {
+    names.add(item.provider);
+  }
+  return [...names];
+}
+
+function linkVisitLogToCarePlanItem(carePlanItemId, visitLogId) {
+  const item = state.carePlan.find((entry) => entry.id === carePlanItemId);
+  const log = state.visitLogs.find((entry) => entry.id === visitLogId);
+  if (!item || !log) {
+    return false;
+  }
+
+  item.linkedVisitLogIds = normalizeStringArray(item.linkedVisitLogIds);
+  if (!item.linkedVisitLogIds.includes(visitLogId)) {
+    item.linkedVisitLogIds.push(visitLogId);
+  }
+  if (log.providerId) {
+    item.linkedProviderIds = normalizeStringArray(item.linkedProviderIds);
+    if (!item.linkedProviderIds.includes(log.providerId)) {
+      item.linkedProviderIds.push(log.providerId);
+    }
+  }
+
+  syncCarePlanDerivedFields(item);
+  if (item.frequencyMonths && isValidIsoDate(item.lastCompletedDate)) {
+    item.nextDueDate = addMonths(item.lastCompletedDate, item.frequencyMonths);
+    item.nextDueLabel = "";
+  }
+  item.updatedAt = new Date().toISOString();
+  return true;
+}
+
+function unlinkVisitLogFromCarePlanItem(carePlanItemId, visitLogId) {
+  const item = state.carePlan.find((entry) => entry.id === carePlanItemId);
+  if (!item) {
+    return false;
+  }
+
+  item.linkedVisitLogIds = normalizeStringArray(item.linkedVisitLogIds).filter((id) => id !== visitLogId);
+  syncCarePlanDerivedFields(item);
+  item.updatedAt = new Date().toISOString();
+  return true;
+}
+
+function autoLinkMatchingLogsForCarePlanItem(item) {
+  const linkedIds = new Set(normalizeStringArray(item.linkedVisitLogIds));
+  let added = 0;
+  state.visitLogs.forEach((log) => {
+    if (linkedIds.has(log.id)) {
+      return;
+    }
+    if (visitLogMatchesCarePlanItem(log, item)) {
+      linkedIds.add(log.id);
+      added += 1;
+    }
+  });
+  item.linkedVisitLogIds = [...linkedIds];
+  syncCarePlanDerivedFields(item);
+  item.updatedAt = new Date().toISOString();
+  return added;
+}
+
+function migrateCarePlanVisitLogLinks() {
+  let changed = false;
+  state.carePlan = (state.carePlan || [])
+    .map((entry) => {
+      const item = normalizeCarePlanItem(entry);
+      if (!item) {
+        return null;
+      }
+      if (!item.linkedVisitLogIds.length) {
+        const matched = state.visitLogs.filter((log) => visitLogMatchesCarePlanItem(log, item));
+        if (matched.length) {
+          item.linkedVisitLogIds = matched.map((log) => log.id);
+          changed = true;
+        }
+      }
+      syncCarePlanDerivedFields(item);
+      return item;
+    })
+    .filter(Boolean);
+
+  if (changed) {
+    persist();
+  }
+}
+
+function getSuggestedCarePlanItemsForVisitLog(log) {
+  return (state.carePlan || []).filter((item) => visitLogMatchesCarePlanItem(log, item));
+}
+
+function getCarePlanIdsForVisitLog(visitLogId) {
+  return (state.carePlan || [])
+    .filter((item) => normalizeStringArray(item.linkedVisitLogIds).includes(visitLogId))
+    .map((item) => item.id);
+}
+
+function syncVisitLogCarePlanLinks(visitLogId, selectedCarePlanIds) {
+  const selectedSet = new Set(normalizeStringArray(selectedCarePlanIds));
+  if (pendingCarePlanItemId) {
+    selectedSet.add(pendingCarePlanItemId);
+  }
+
+  state.carePlan.forEach((item) => {
+    const linkedIds = normalizeStringArray(item.linkedVisitLogIds);
+    const isLinked = linkedIds.includes(visitLogId);
+    const shouldLink = selectedSet.has(item.id);
+
+    if (shouldLink && !isLinked) {
+      linkVisitLogToCarePlanItem(item.id, visitLogId);
+    } else if (!shouldLink && isLinked) {
+      unlinkVisitLogFromCarePlanItem(item.id, visitLogId);
+    }
+  });
+}
+
+function renderVisitLogCarePlanSelect() {
+  if (!visitLogCarePlanSelect) {
+    return;
+  }
+
+  const previousSelection = new Set([...visitLogCarePlanSelect.selectedOptions].map((option) => option.value));
+  if (pendingCarePlanItemId) {
+    previousSelection.add(pendingCarePlanItemId);
+  }
+  if (editingVisitLogId) {
+    getCarePlanIdsForVisitLog(editingVisitLogId).forEach((id) => previousSelection.add(id));
+  }
+
+  const providerRecord = getProviderFromSelectValue(visitLogProviderSelect?.value);
+  const draftLog = {
+    provider: providerRecord ? getProviderRecordName(providerRecord) : "",
+    specialty:
+      cleanText(visitLogSpecialtySelect?.value) === "__custom__"
+        ? cleanText(visitLogForm?.elements.customSpecialty?.value)
+        : cleanText(visitLogSpecialtySelect?.value),
+    reason: cleanText(visitLogForm?.elements.reason?.value),
+    summary: cleanText(visitLogForm?.elements.summary?.value),
+    clinic: cleanText(visitLogForm?.elements.clinic?.value),
+    date: cleanText(visitLogForm?.elements.date?.value),
+    status: cleanText(visitLogForm?.elements.status?.value) || "Completed",
+  };
+
+  const suggestedIds = new Set(getSuggestedCarePlanItemsForVisitLog(draftLog).map((item) => item.id));
+  const options = (state.carePlan || [])
+    .map((item) => {
+      const suggested = suggestedIds.has(item.id) ? " (suggested)" : "";
+      return `<option value="${escapeHtml(item.id)}"${previousSelection.has(item.id) || suggestedIds.has(item.id) ? " selected" : ""}>${escapeHtml(item.category || "General")} • ${escapeHtml(item.name)}${suggested}</option>`;
+    })
+    .join("");
+
+  visitLogCarePlanSelect.innerHTML = options;
+  if (visitLogCarePlanHint) {
+    visitLogCarePlanHint.textContent = suggestedIds.size
+      ? "Suggested care plan items are pre-selected based on specialty and reason."
+      : "Optionally link this visit to one or more care plan items.";
+  }
+}
+
+function renderCarePlanVisitLogRow(log, { connected = false, carePlanItemId = "" } = {}) {
+  return `
+    <article class="care-plan-log-row">
+      <div class="care-plan-log-row-main">
+        <strong>${formatDate(log.date)} • ${escapeHtml(log.provider || "Unknown provider")}</strong>
+        <span class="care-plan-log-row-meta">${escapeHtml(log.specialty || "General")} • ${escapeHtml(log.clinic || "No clinic saved")}</span>
+        <span class="care-plan-log-row-meta">${escapeHtml(log.reason || "No reason saved")} • ${escapeHtml(log.status || "Completed")}</span>
+      </div>
+      <div class="actions-row">
+        ${
+          connected
+            ? `<button type="button" class="button-secondary" data-care-plan-link-action="remove" data-care-plan-id="${escapeHtml(carePlanItemId)}" data-visit-log-id="${escapeHtml(log.id)}">Remove from Care Plan</button>`
+            : `<button type="button" class="button-primary" data-care-plan-link-action="connect" data-care-plan-id="${escapeHtml(carePlanItemId)}" data-visit-log-id="${escapeHtml(log.id)}">Connect Visit Log</button>`
+        }
+      </div>
+    </article>
+  `;
+}
+
+function renderCarePlanConnectedVisitLogsEditor() {
+  if (!carePlanConnectedVisitLogs || !carePlanAvailableVisitLogs) {
+    return;
+  }
+
+  const carePlanItemId = cleanText(carePlanForm?.elements.carePlanId?.value) || editingCarePlanId;
+  const linkedIds = new Set(editingCarePlanLinkedVisitLogIds);
+  const query = cleanText(carePlanVisitLogSearch?.value).toLowerCase();
+  const connectedLogs = state.visitLogs
+    .filter((log) => linkedIds.has(log.id))
+    .sort((a, b) => compareOptionalDates(b.date, a.date));
+  const availableLogs = state.visitLogs
+    .filter((log) => !linkedIds.has(log.id))
+    .filter((log) => !query || getVisitLogSearchHaystack(log).includes(query))
+    .sort((a, b) => compareOptionalDates(b.date, a.date));
+
+  carePlanConnectedVisitLogs.innerHTML = connectedLogs.length
+    ? `<p class="meta">Connected</p>${connectedLogs.map((log) => renderCarePlanVisitLogRow(log, { connected: true, carePlanItemId })).join("")}`
+    : `<p class="empty-state-row muted">No visit logs connected yet.</p>`;
+
+  carePlanAvailableVisitLogs.innerHTML = availableLogs.length
+    ? `<p class="meta">Available visit logs</p>${availableLogs.map((log) => renderCarePlanVisitLogRow(log, { connected: false, carePlanItemId })).join("")}`
+    : `<p class="empty-state-row muted">No matching visit logs found.</p>`;
+
+  if (carePlanForm?.elements.lastCompletedDate && connectedLogs.length) {
+    const newestCompleted = connectedLogs.find((log) => cleanText(log.status || "Completed") === "Completed");
+    if (newestCompleted) {
+      carePlanForm.elements.lastCompletedDate.value = newestCompleted.date;
+    }
+  }
+}
+
+function renderCarePlanLinkedVisitsSummary(item, connectedLogs = getCarePlanConnectedLogs(item)) {
+  if (!connectedLogs.length) {
+    return "";
+  }
+
+  const preview = connectedLogs
+    .slice(0, 2)
+    .map(
+      (log) =>
+        `<span class="care-plan-linked-visit">${formatDate(log.date)} • ${escapeHtml(log.provider || "Unknown provider")}</span>`
+    )
+    .join("");
+  const viewAll =
+    connectedLogs.length > 2
+      ? `<button type="button" class="button-secondary button-compact" data-care-plan-action="view-linked" data-care-plan-id="${escapeHtml(item.id)}">View all (${connectedLogs.length})</button>`
+      : "";
+
+  return `
+    <div class="care-plan-linked-visits">
+      <strong>Linked visits</strong>
+      <span class="meta">${connectedLogs.length} linked visit${connectedLogs.length === 1 ? "" : "s"}</span>
+      ${preview}
+      ${viewAll}
+    </div>
+  `;
+}
+
+function handleCarePlanFormClick(event) {
+  const linkButton = event.target.closest("[data-care-plan-link-action]");
+  if (linkButton) {
+    event.preventDefault();
+    const visitLogId = linkButton.dataset.visitLogId;
+    const carePlanItemId = linkButton.dataset.carePlanId || editingCarePlanId;
+    if (linkButton.dataset.carePlanLinkAction === "connect") {
+      if (!editingCarePlanLinkedVisitLogIds.includes(visitLogId)) {
+        editingCarePlanLinkedVisitLogIds.push(visitLogId);
+      }
+    } else {
+      editingCarePlanLinkedVisitLogIds = editingCarePlanLinkedVisitLogIds.filter((id) => id !== visitLogId);
+    }
+    renderCarePlanConnectedVisitLogsEditor();
+    return;
+  }
+}
+
+function handleCarePlanAutoLinkClick() {
+  const item = buildDraftCarePlanItemFromForm();
+  if (!item) {
+    window.alert("Add a category and item name before auto-linking visit logs.");
+    return;
+  }
+
+  const linkedIds = new Set(editingCarePlanLinkedVisitLogIds);
+  let added = 0;
+  state.visitLogs.forEach((log) => {
+    if (linkedIds.has(log.id)) {
+      return;
+    }
+    if (visitLogMatchesCarePlanItem(log, item)) {
+      linkedIds.add(log.id);
+      added += 1;
+    }
+  });
+  editingCarePlanLinkedVisitLogIds = [...linkedIds];
+  renderCarePlanConnectedVisitLogsEditor();
+  if (!added) {
+    window.alert("No new matching visit logs were found.");
+  }
+}
+
+function buildDraftCarePlanItemFromForm() {
+  if (!carePlanForm) {
+    return null;
+  }
+  const category = cleanText(carePlanForm.elements.category?.value);
+  const name = cleanText(carePlanForm.elements.name?.value);
+  if (!category || !name) {
+    return null;
+  }
+  return {
+    category,
+    name,
+    summary: cleanText(carePlanForm.elements.summary?.value),
   };
 }
 
@@ -3972,6 +4461,14 @@ function getCarePlanProviderDisplayName(item) {
     return "Not saved";
   }
 
+  const linkedNames = getCarePlanLinkedProviderNames(item);
+  if (linkedNames.length > 1 || item.providerMode === "multiple") {
+    return "Multiple providers";
+  }
+  if (linkedNames.length === 1) {
+    return linkedNames[0];
+  }
+
   if (item.providerId) {
     const provider = getAllProviders().find((entry) => entry.id === item.providerId);
     if (provider) {
@@ -3980,6 +4477,14 @@ function getCarePlanProviderDisplayName(item) {
   }
 
   return cleanText(item.providerName) || cleanText(item.provider) || "Not saved";
+}
+
+function getCarePlanProviderDisplayDetails(item) {
+  const linkedNames = getCarePlanLinkedProviderNames(item);
+  if (linkedNames.length > 1 || item.providerMode === "multiple") {
+    return linkedNames.join(", ");
+  }
+  return "";
 }
 
 function getCarePlanLegacyProviderValue(providerText) {
@@ -4207,7 +4712,7 @@ function getCarePlanStatus(item) {
     }
   }
 
-  const lastCompletedDate = cleanText(item.lastCompletedDate);
+  const lastCompletedDate = getCarePlanDerivedLastCompleted(item);
   if (isValidIsoDate(lastCompletedDate) && lastCompletedDate >= subtractDays(today, 45)) {
     if (!isValidIsoDate(nextDueDate) || nextDueDate > today) {
       return "completed";
@@ -4354,6 +4859,14 @@ function renderCarePlanCard(item) {
   const notesBlock = cleanText(item.notes)
     ? `<p class="care-plan-notes">${escapeHtml(item.notes)}</p>`
     : "";
+  const connectedLogs = getCarePlanConnectedLogs(item);
+  const providerDetails = getCarePlanProviderDisplayDetails(item);
+  const providerDetailsBlock = providerDetails
+    ? `<ul class="care-plan-provider-list">${providerDetails
+        .split(", ")
+        .map((name) => `<li>${escapeHtml(name)}</li>`)
+        .join("")}</ul>`
+    : "";
 
   return `
     <article class="record-card care-plan-card status-${escapeHtml(status)}">
@@ -4366,10 +4879,11 @@ function renderCarePlanCard(item) {
       </div>
       <div class="care-plan-info-grid compact-grid">
         <span><strong>Next due</strong>${escapeHtml(formatCarePlanNextDue(item))}</span>
-        <span><strong>Last completed</strong>${formatDate(item.lastCompletedDate)}</span>
+        <span><strong>Last completed</strong>${formatDate(getCarePlanDerivedLastCompleted(item))}</span>
         <span><strong>Scheduled</strong>${escapeHtml(scheduledLine)}</span>
-        <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}</span>
+        <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}${providerDetailsBlock}</span>
       </div>
+      ${renderCarePlanLinkedVisitsSummary(item, connectedLogs)}
       ${notesBlock}
       <div class="care-plan-card-actions actions-row">
         <button class="button-secondary" type="button" data-care-plan-action="edit" data-care-plan-id="${escapeHtml(item.id)}">Edit</button>
@@ -4400,6 +4914,7 @@ function showCarePlanView(view) {
 
 function showCarePlanList() {
   editingCarePlanId = "";
+  editingCarePlanLinkedVisitLogIds = [];
   showCarePlanView("list");
   renderCarePlan();
 }
@@ -4418,11 +4933,15 @@ function openCarePlanForm(itemId = "") {
 
 function resetCarePlanForm() {
   editingCarePlanId = "";
+  editingCarePlanLinkedVisitLogIds = [];
   if (!carePlanForm) {
     return;
   }
   carePlanForm.reset();
   carePlanForm.elements.carePlanId.value = "";
+  if (carePlanVisitLogSearch) {
+    carePlanVisitLogSearch.value = "";
+  }
   if (carePlanForm.elements.isOptional) {
     carePlanForm.elements.isOptional.checked = false;
   }
@@ -4438,10 +4957,12 @@ function resetCarePlanForm() {
     carePlanNextDueHint.classList.add("is-hidden");
   }
   syncCarePlanDueShortcutButtons();
+  renderCarePlanConnectedVisitLogsEditor();
 }
 
 function fillCarePlanForm(item) {
   editingCarePlanId = item.id;
+  editingCarePlanLinkedVisitLogIds = [...normalizeStringArray(item.linkedVisitLogIds)];
   carePlanForm.elements.carePlanId.value = item.id;
   carePlanForm.elements.category.value = item.category || "";
   carePlanForm.elements.name.value = item.name || "";
@@ -4449,7 +4970,7 @@ function fillCarePlanForm(item) {
   carePlanForm.elements.frequency.value = item.frequency || "";
   carePlanForm.elements.frequencyMonths.value =
     item.frequencyMonths === null || item.frequencyMonths === undefined ? "" : String(item.frequencyMonths);
-  carePlanForm.elements.lastCompletedDate.value = item.lastCompletedDate || "";
+  carePlanForm.elements.lastCompletedDate.value = getCarePlanDerivedLastCompleted(item) || "";
   carePlanForm.elements.nextDueDate.value = item.nextDueDate || "";
   carePlanForm.elements.nextDueLabel.value = item.nextDueLabel || "";
   carePlanForm.elements.scheduledDate.value = item.scheduledDate || "";
@@ -4467,6 +4988,7 @@ function fillCarePlanForm(item) {
   }
   renderCarePlanProviderSelect(item);
   syncCarePlanDueShortcutButtons();
+  renderCarePlanConnectedVisitLogsEditor();
 }
 
 function handleCarePlanSubmit(event) {
@@ -4497,6 +5019,9 @@ function handleCarePlanSubmit(event) {
     scheduledTime: cleanText(formData.get("scheduledTime")),
     providerId: providerFields.providerId,
     providerName: providerFields.providerName,
+    linkedVisitLogIds: editingCarePlanLinkedVisitLogIds,
+    linkedProviderIds: existing?.linkedProviderIds || [],
+    providerMode: existing?.providerMode || "single",
     place: cleanText(formData.get("place")),
     notes: cleanText(formData.get("notes")),
     isOptional: formData.get("isOptional") === "on",
@@ -4508,6 +5033,8 @@ function handleCarePlanSubmit(event) {
     return;
   }
 
+  syncCarePlanDerivedFields(nextItem);
+
   const existingIndex = state.carePlan.findIndex((entry) => entry.id === itemId);
   if (existingIndex >= 0) {
     state.carePlan[existingIndex] = nextItem;
@@ -4516,6 +5043,7 @@ function handleCarePlanSubmit(event) {
   }
 
   persist();
+  editingCarePlanLinkedVisitLogIds = [];
   showCarePlanList();
 }
 
@@ -4543,6 +5071,10 @@ function handleCarePlanListClick(event) {
     return;
   }
   if (action === "edit") {
+    openCarePlanForm(item.id);
+    return;
+  }
+  if (action === "view-linked") {
     openCarePlanForm(item.id);
     return;
   }
@@ -4577,10 +5109,70 @@ function markCarePlanComplete(itemId) {
     return;
   }
 
-  const today = todayString();
-  item.lastCompletedDate = today;
-  if (item.frequencyMonths) {
-    item.nextDueDate = addMonths(today, item.frequencyMonths);
+  const connectedLogs = getCarePlanConnectedLogs(item).filter((log) => isValidIsoDate(log.date));
+
+  if (connectedLogs.length > 1) {
+    const lines = connectedLogs
+      .map(
+        (log, index) =>
+          `${index + 1}. ${formatDate(log.date)} • ${log.provider || "Unknown provider"} (${log.specialty || "General"})`
+      )
+      .join("\n");
+    const input = window.prompt(
+      `Mark "${item.name}" complete.\n\nConnected visits:\n${lines}\n\nEnter visit number to use that log, type "today" for today, or "log" to log a new visit:`,
+      "1"
+    );
+    if (input === null) {
+      return;
+    }
+
+    const choice = input.trim().toLowerCase();
+    if (choice === "log") {
+      openVisitLogFromCarePlan(item);
+      return;
+    }
+    if (choice === "today") {
+      item.lastCompletedDate = todayString();
+    } else {
+      const index = Number.parseInt(choice, 10) - 1;
+      if (Number.isFinite(index) && index >= 0 && index < connectedLogs.length) {
+        linkVisitLogToCarePlanItem(item.id, connectedLogs[index].id);
+      } else {
+        item.lastCompletedDate = todayString();
+      }
+    }
+  } else if (connectedLogs.length === 1) {
+    const useConnected = window.confirm(
+      `Mark complete using ${formatDate(connectedLogs[0].date)} with ${connectedLogs[0].provider || "Unknown provider"}?\n\nOK = use that visit\nCancel = choose another option`
+    );
+    if (useConnected) {
+      linkVisitLogToCarePlanItem(item.id, connectedLogs[0].id);
+    } else {
+      const choice = window.prompt('Type "today" to use today, or "log" to log a new visit:', "today");
+      if (choice === null) {
+        return;
+      }
+      if (choice.trim().toLowerCase() === "log") {
+        openVisitLogFromCarePlan(item);
+        return;
+      }
+      item.lastCompletedDate = todayString();
+    }
+  } else {
+    const choice = window.prompt('No connected visits yet. Type "log" to log a visit, or press OK to use today:', "log");
+    if (choice === null) {
+      return;
+    }
+    if (choice.trim().toLowerCase() === "log") {
+      openVisitLogFromCarePlan(item);
+      return;
+    }
+    item.lastCompletedDate = todayString();
+  }
+
+  syncCarePlanDerivedFields(item);
+  if (item.frequencyMonths && isValidIsoDate(item.lastCompletedDate)) {
+    item.nextDueDate = addMonths(item.lastCompletedDate, item.frequencyMonths);
     item.nextDueLabel = "";
   }
   item.updatedAt = new Date().toISOString();
@@ -4595,7 +5187,7 @@ function setCarePlanNextDueFromMonths(itemId, months) {
   }
 
   const anchor =
-    (isValidIsoDate(item.lastCompletedDate) && item.lastCompletedDate) ||
+    getCarePlanDerivedLastCompleted(item) ||
     (isValidIsoDate(item.nextDueDate) && item.nextDueDate) ||
     todayString();
   item.nextDueDate = addMonths(anchor, months);
@@ -4631,6 +5223,15 @@ function setCarePlanNextDueCustom(itemId) {
 }
 
 function getCarePlanDueAnchorDate() {
+  if (editingCarePlanLinkedVisitLogIds.length) {
+    const connected = state.visitLogs
+      .filter((log) => editingCarePlanLinkedVisitLogIds.includes(log.id) && isValidIsoDate(log.date))
+      .sort((a, b) => compareOptionalDates(b.date, a.date));
+    if (connected[0]) {
+      return { date: connected[0].date, missingAnchor: false };
+    }
+  }
+
   const lastCompleted = cleanText(carePlanForm?.elements.lastCompletedDate?.value);
   if (isValidIsoDate(lastCompleted)) {
     return { date: lastCompleted, missingAnchor: false };
@@ -4718,19 +5319,8 @@ function handleCarePlanDueShortcutClick(event) {
   applyCarePlanDuePreset(button.dataset.carePlanDuePreset);
 }
 
-function applyCarePlanVisitLogCompletion(carePlanItemId, visitDate) {
-  const item = state.carePlan.find((entry) => entry.id === carePlanItemId);
-  if (!item) {
-    return;
-  }
-
-  const completedDate = isValidIsoDate(visitDate) ? visitDate : todayString();
-  item.lastCompletedDate = completedDate;
-  if (item.frequencyMonths) {
-    item.nextDueDate = addMonths(completedDate, item.frequencyMonths);
-    item.nextDueLabel = "";
-  }
-  item.updatedAt = new Date().toISOString();
+function applyCarePlanVisitLogCompletion(carePlanItemId, visitLogId) {
+  linkVisitLogToCarePlanItem(carePlanItemId, visitLogId);
 }
 
 function applyCarePlanAppointmentScheduled(carePlanItemId, appointment) {
@@ -4775,6 +5365,7 @@ function openVisitLogFromCarePlan(item) {
   const specialtyValue = linkedProvider?.specialty || item.category || "";
   setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, specialtyValue);
   syncVisitLogCustomSpecialtyVisibility();
+  renderVisitLogCarePlanSelect();
 }
 
 function openAppointmentFromCarePlan(item) {

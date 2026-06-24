@@ -507,6 +507,14 @@
                 </select>
               </label>
               <p id="visitLogLastAppointmentInfo" class="meta full-span">Choose a provider to autofill clinic, specialty, and reason.</p>
+              <div class="follow-up-section full-span" id="visitLogCarePlanSection">
+                <p class="eyebrow">Connect to care plan</p>
+                <p id="visitLogCarePlanHint" class="meta">Optionally link this visit to one or more care plan items.</p>
+                <label class="full-span">
+                  Care plan items
+                  <select id="visitLogCarePlanSelect" name="carePlanLinks" multiple size="4"></select>
+                </label>
+              </div>
               <div class="follow-up-section full-span">
                 <p class="eyebrow">Follow-up</p>
                 <p id="visitLogFollowUpHint" class="meta follow-up-hint is-hidden"></p>
@@ -624,6 +632,19 @@
                 Provider
                 <select name="carePlanProvider" id="carePlanProviderSelect"></select>
               </label>
+              <div class="follow-up-section full-span care-plan-connected-logs">
+                <p class="eyebrow">Connected visit logs</p>
+                <p class="meta">Link completed visits to this care plan item. Last completed uses the newest linked visit.</p>
+                <label class="full-span">
+                  Search visit logs
+                  <input type="search" id="carePlanVisitLogSearch" placeholder="Search provider, clinic, specialty, reason, summary, date" />
+                </label>
+                <div class="actions-row">
+                  <button type="button" id="carePlanAutoLinkButton" class="button-secondary">Auto-link matching logs</button>
+                </div>
+                <div id="carePlanConnectedVisitLogs" class="compact-list care-plan-log-list"></div>
+                <div id="carePlanAvailableVisitLogs" class="compact-list care-plan-log-list"></div>
+              </div>
               <label>
                 Place / clinic
                 <input type="text" name="place" placeholder="Clinic name or address" />

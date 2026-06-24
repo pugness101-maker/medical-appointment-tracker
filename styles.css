@@ -1202,6 +1202,62 @@ button {
   display: none !important;
 }
 
+.care-plan-linked-visits {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+}
+
+.care-plan-linked-visits strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.care-plan-linked-visit {
+  display: block;
+  color: var(--text);
+}
+
+.care-plan-log-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.care-plan-log-row-main {
+  display: grid;
+  gap: 4px;
+}
+
+.care-plan-log-row-meta {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.care-plan-provider-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.care-plan-connected-logs .care-plan-log-list {
+  gap: 10px;
+}
+
+#visitLogCarePlanSelect {
+  min-height: 110px;
+}
+
 @media (max-width: 768px) {
   .hero-grid,
   .form-grid,
