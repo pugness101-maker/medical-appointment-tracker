@@ -3026,6 +3026,28 @@ function loadVisitLogIntoEditor(visitLogId) {
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogFormMode();
   renderVisitLogCarePlanSelect();
+  syncVisitLogOptionalSections();
+}
+
+function syncVisitLogOptionalSections() {
+  const collapsibles = visitLogForm?.querySelectorAll(".visit-log-section-collapsible");
+  if (!collapsibles?.length || !visitLogForm) {
+    return;
+  }
+
+  const hasFollowUp =
+    [...(visitLogCarePlanSelect?.selectedOptions || [])].length > 0 ||
+    cleanText(visitLogForm.elements.followUpDueDate?.value) ||
+    cleanText(visitLogForm.elements.followUpNeeded?.value);
+  const hasNotes =
+    cleanText(visitLogForm.elements.summary?.value) ||
+    cleanText(visitLogForm.elements.results?.value) ||
+    cleanText(visitLogForm.elements.costCopay?.value);
+
+  collapsibles[0].open = Boolean(hasFollowUp);
+  if (collapsibles[1]) {
+    collapsibles[1].open = Boolean(hasNotes);
+  }
 }
 
 function syncVisitLogFormMode() {
@@ -3057,6 +3079,9 @@ function resetVisitLogForm() {
   }
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogFormMode();
+  visitLogForm?.querySelectorAll(".visit-log-section-collapsible").forEach((section) => {
+    section.open = false;
+  });
   renderVisitLogCarePlanSelect();
 }
 
@@ -3197,6 +3222,9 @@ function resetVisitLogFormExceptProvider() {
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogProviderSelection();
   syncVisitLogFormMode();
+  visitLogForm?.querySelectorAll(".visit-log-section-collapsible").forEach((section) => {
+    section.open = false;
+  });
   renderVisitLogCarePlanSelect();
 }
 
@@ -4360,6 +4388,8 @@ function renderVisitLogCarePlanSelect() {
     .join("");
 
   visitLogCarePlanSelect.innerHTML = options;
+  visitLogCarePlanSelect.classList.toggle("has-options", Boolean(options));
+  visitLogCarePlanSelect.size = options ? Math.min(3, (state.carePlan || []).length) : 2;
   if (visitLogCarePlanHint) {
     visitLogCarePlanHint.textContent = suggestedIds.size
       ? "Suggested care plan items are pre-selected based on specialty and reason."
@@ -5442,6 +5472,7 @@ function openVisitLogFromCarePlan(item) {
   setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, specialtyValue);
   syncVisitLogCustomSpecialtyVisibility();
   renderVisitLogCarePlanSelect();
+  syncVisitLogOptionalSections();
 }
 
 function openAppointmentFromCarePlan(item) {

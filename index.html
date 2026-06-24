@@ -447,95 +447,107 @@
               <div>
                 <p class="eyebrow">Visits</p>
                 <h2 id="visitLogFormTitle">Add visit log</h2>
-                <p class="meta">Log a completed visit and optional follow-up details.</p>
+                <p class="meta">Quick log for a completed visit.</p>
               </div>
               <button id="visitLogFormBack" class="button-secondary" type="button">← Back to Visits</button>
             </div>
-            <div id="visitLogFormMount">
-            <form id="visitLogForm" class="form-grid visit-log-form">
+            <div id="visitLogFormMount" class="visit-log-shell">
+            <form id="visitLogForm" class="visit-log-form">
               <input type="hidden" name="visitLogAppointmentId" />
               <input type="hidden" name="visitLogId" />
-              <div class="provider-select-row full-span">
-                <label>
-                  Provider
-                  <select name="provider" id="visitLogProviderSelect"></select>
-                </label>
-                <button id="editProvidersButton" class="button-secondary button-compact" type="button">Edit Providers</button>
-              </div>
-              <label>
-                Visit date
-                <input type="date" name="date" />
-              </label>
-              <label>
-                Status
-                <select name="status">
-                  <option>Completed</option>
-                  <option>Waiting on results</option>
-                  <option>Follow-up needed</option>
-                  <option>Resolved</option>
-                </select>
-              </label>
-              <label>
-                Clinic
-                <input type="text" name="clinic" placeholder="Clinic name or address" />
-              </label>
-              <label>
-                Specialty
-                <select name="specialty" id="visitLogSpecialtySelect"></select>
-              </label>
-              <label id="visitLogCustomSpecialtyLabel" class="full-span is-hidden">
-                Custom specialty
-                <input type="text" name="customSpecialty" placeholder="Custom specialty" />
-              </label>
-              <label class="full-span">
-                Reason
-                <input type="text" name="reason" placeholder="Annual checkup, follow-up, screening" />
-              </label>
-              <label class="full-span">
-                Quick template
-                <select id="visitLogQuickTemplate" name="quickTemplate">
-                  <option value="">Choose template</option>
-                  <option value="annual-checkup">Annual checkup</option>
-                  <option value="dental-cleaning">Dental cleaning</option>
-                  <option value="eye-exam">Eye exam</option>
-                  <option value="lab-review">Lab review</option>
-                  <option value="medication-refill">Medication refill</option>
-                  <option value="follow-up">Follow-up</option>
-                  <option value="sick-visit">Sick visit</option>
-                  <option value="screening">Screening</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              <p id="visitLogLastAppointmentInfo" class="meta full-span">Choose a provider to autofill clinic, specialty, and reason.</p>
-              <div class="follow-up-section full-span" id="visitLogCarePlanSection">
-                <p class="eyebrow">Connect to care plan</p>
-                <p id="visitLogCarePlanHint" class="meta">Optionally link this visit to one or more care plan items.</p>
-                <label class="full-span">
-                  Care plan items
-                  <select id="visitLogCarePlanSelect" name="carePlanLinks" multiple size="4"></select>
-                </label>
-              </div>
-              <div class="follow-up-section full-span">
-                <p class="eyebrow">Follow-up</p>
-                <p id="visitLogFollowUpHint" class="meta follow-up-hint is-hidden"></p>
-                <div class="follow-up-shortcut-row">
-                  <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="none">No follow-up</button>
-                  <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="6months">6 months</button>
-                  <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="1year">1 year</button>
-                  <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="custom">Custom date</button>
+
+              <p class="visit-log-helper meta">Only provider/date/status are needed. Add details if you want.</p>
+
+              <section class="visit-log-section visit-log-section-basics">
+                <p class="visit-log-section-label eyebrow">Visit basics</p>
+                <div class="form-grid visit-log-basics-grid">
+                  <div class="provider-select-row full-span">
+                    <label>
+                      Provider
+                      <select name="provider" id="visitLogProviderSelect"></select>
+                    </label>
+                    <button id="editProvidersButton" class="button-secondary button-compact" type="button">Edit Providers</button>
+                  </div>
+                  <label>
+                    Visit date
+                    <input type="date" name="date" />
+                  </label>
+                  <label>
+                    Status
+                    <select name="status">
+                      <option>Completed</option>
+                      <option>Waiting on results</option>
+                      <option>Follow-up needed</option>
+                      <option>Resolved</option>
+                    </select>
+                  </label>
+                  <label>
+                    Clinic
+                    <input type="text" name="clinic" placeholder="Clinic name or address" />
+                  </label>
+                  <label>
+                    Specialty
+                    <select name="specialty" id="visitLogSpecialtySelect"></select>
+                  </label>
+                  <label id="visitLogCustomSpecialtyLabel" class="full-span is-hidden">
+                    Custom specialty
+                    <input type="text" name="customSpecialty" placeholder="Custom specialty" />
+                  </label>
+                  <label>
+                    Reason
+                    <input type="text" name="reason" placeholder="Annual checkup, follow-up, screening" />
+                  </label>
+                  <label>
+                    Quick template
+                    <select id="visitLogQuickTemplate" name="quickTemplate">
+                      <option value="">Choose template</option>
+                      <option value="annual-checkup">Annual checkup</option>
+                      <option value="dental-cleaning">Dental cleaning</option>
+                      <option value="eye-exam">Eye exam</option>
+                      <option value="lab-review">Lab review</option>
+                      <option value="medication-refill">Medication refill</option>
+                      <option value="follow-up">Follow-up</option>
+                      <option value="sick-visit">Sick visit</option>
+                      <option value="screening">Screening</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
                 </div>
-                <label>
-                  Follow-up due date
-                  <input type="date" name="followUpDueDate" />
-                </label>
-                <label>
-                  Follow-up needed
-                  <input type="text" name="followUpNeeded" placeholder="Return in 6 months, book test, monitor symptoms" />
-                </label>
-              </div>
-              <details class="more-details full-span">
-                <summary>More details</summary>
-                <div class="form-grid">
+                <p id="visitLogLastAppointmentInfo" class="meta visit-log-provider-hint">Choose a provider to autofill clinic, specialty, and reason.</p>
+              </section>
+
+              <details class="form-section visit-log-section-collapsible">
+                <summary class="form-section-summary">Follow-up &amp; Care Plan</summary>
+                <div class="form-section-body form-grid visit-log-collapsible-grid">
+                  <div class="full-span" id="visitLogCarePlanSection">
+                    <p class="eyebrow">Connect to care plan</p>
+                    <p id="visitLogCarePlanHint" class="meta">Optionally link this visit to one or more care plan items.</p>
+                    <label>
+                      Care plan items
+                      <select id="visitLogCarePlanSelect" name="carePlanLinks" multiple size="2"></select>
+                    </label>
+                  </div>
+                  <p id="visitLogFollowUpHint" class="meta follow-up-hint full-span is-hidden"></p>
+                  <div class="follow-up-shortcut-row full-span">
+                    <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="none">No follow-up</button>
+                    <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="6months">6 months</button>
+                    <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="1year">1 year</button>
+                    <button type="button" class="button-secondary follow-up-shortcut" data-follow-up-preset="custom">Custom date</button>
+                  </div>
+                  <label>
+                    Follow-up due date
+                    <input type="date" name="followUpDueDate" />
+                  </label>
+                  <label>
+                    Follow-up needed
+                    <input type="text" name="followUpNeeded" placeholder="Return in 6 months, book test, monitor symptoms" />
+                  </label>
+                </div>
+              </details>
+
+              <details class="form-section visit-log-section-collapsible">
+                <summary class="form-section-summary">Notes, Results &amp; Cost</summary>
+                <div class="form-section-body form-grid visit-log-collapsible-grid">
                   <label class="full-span">
                     Summary
                     <textarea name="summary" rows="2" placeholder="What happened at the visit?"></textarea>
@@ -557,12 +569,15 @@
                   </label>
                 </div>
               </details>
-              <div class="inline-row full-span visit-log-actions">
+
+              <div class="visit-log-actions-sticky">
                 <p id="visitLogFormError" class="visit-log-form-error is-hidden" role="alert"></p>
-                <button id="visitLogSubmitButton" class="button-primary" type="submit">Save Visit Log</button>
-                <button id="visitLogSaveFollowUpButton" class="button-secondary visit-log-add-only" type="button">Save + Schedule Follow-up</button>
-                <button id="visitLogSaveAddAnotherButton" class="button-secondary visit-log-add-only" type="button">Save & Add Another</button>
-                <button id="visitLogCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+                <div class="visit-log-actions">
+                  <button id="visitLogSubmitButton" class="button-primary" type="submit">Save Visit Log</button>
+                  <button id="visitLogSaveFollowUpButton" class="button-secondary visit-log-add-only" type="button">Save + Schedule Follow-up</button>
+                  <button id="visitLogSaveAddAnotherButton" class="button-secondary visit-log-add-only" type="button">Save &amp; Add Another</button>
+                  <button id="visitLogCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+                </div>
               </div>
             </form>
             </div>
