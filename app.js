@@ -650,6 +650,16 @@ const visitLogLastAppointmentInfo = document.querySelector("#visitLogLastAppoint
 const visitLogFormError = document.querySelector("#visitLogFormError");
 const visitLogSubmitButton = document.querySelector("#visitLogSubmitButton");
 const visitLogCancelButton = document.querySelector("#visitLogCancelButton");
+const visitLogUploadRecordButton = document.querySelector("#visitLogUploadRecordButton");
+const visitLogUploadRecordInput = document.querySelector("#visitLogUploadRecordInput");
+const visitLogUploadStatus = document.querySelector("#visitLogUploadStatus");
+const visitLogUploadReview = document.querySelector("#visitLogUploadReview");
+const visitLogUploadReviewForm = document.querySelector("#visitLogUploadReviewForm");
+const visitLogUploadReviewMeta = document.querySelector("#visitLogUploadReviewMeta");
+const visitLogUploadReviewError = document.querySelector("#visitLogUploadReviewError");
+const visitLogUploadReviewSaveButton = document.querySelector("#visitLogUploadReviewSaveButton");
+const visitLogUploadReviewEditButton = document.querySelector("#visitLogUploadReviewEditButton");
+const visitLogUploadReviewCancelButton = document.querySelector("#visitLogUploadReviewCancelButton");
 const visitHistoryGlobalList = document.querySelector("#visitHistoryGlobalList");
 const visitHistorySelectButton = document.querySelector("#visitHistorySelectButton");
 const visitHistoryDeleteSelectedButton = document.querySelector("#visitHistoryDeleteSelectedButton");
@@ -740,6 +750,8 @@ let pendingCarePlanItemId = "";
 let editingResultId = "";
 let editingVisitLogResultDrafts = [];
 let selectedVisitLogCarePlanIds = [];
+let pendingTherapyUploadMeta = null;
+let therapyUploadReviewState = null;
 let activeResultsFilter = "all";
 let activeResultsVisitFilter = "";
 let activeResultsCarePlanFilter = "";
@@ -811,6 +823,10 @@ function onAll(elements, eventName, handlerFactory) {
 }
 
 bindEvents();
+if (typeof pdfjsLib !== "undefined") {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
 migrateProvidersInPlace();
 mergeInitialAppointmentLogs();
 mergeInitialCarePlan();
@@ -855,6 +871,19 @@ function bindEvents() {
     resetVisitLogForm();
     showVisitsList();
   });
+  if (visitLogUploadRecordButton && visitLogUploadRecordInput) {
+    on(visitLogUploadRecordButton, "click", () => visitLogUploadRecordInput.click());
+    on(visitLogUploadRecordInput, "change", handleVisitLogRecordUpload);
+  }
+  if (visitLogUploadReviewForm) {
+    on(visitLogUploadReviewForm, "submit", handleVisitLogUploadReviewSubmit);
+  }
+  if (visitLogUploadReviewEditButton) {
+    on(visitLogUploadReviewEditButton, "click", handleVisitLogUploadReviewEditMore);
+  }
+  if (visitLogUploadReviewCancelButton) {
+    on(visitLogUploadReviewCancelButton, "click", closeVisitLogUploadReview);
+  }
   on(appointmentList, "click", handleAppointmentListClick);
   on(appointmentList, "submit", handleInlineVisitLogSubmit);
   on(dashboardAppointmentList, "click", handleAppointmentListClick);
@@ -3224,9 +3253,12 @@ function loadVisitLogIntoEditor(visitLogId) {
     visitLogProviderSelect.value = "";
   }
   visitLogForm.elements.visitLogId.value = log.id || "";
+  visitLogForm.elements.visitLogCustomProvider.value = log.provider || "";
   visitLogForm.elements.clinic.value = log.clinic || "";
   setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, log.specialty || "");
   visitLogForm.elements.date.value = log.date || "";
+  visitLogForm.elements.startTime.value = log.startTime || "";
+  visitLogForm.elements.endTime.value = log.endTime || "";
   visitLogForm.elements.reason.value = log.reason || "";
   visitLogForm.elements.status.value = log.status || "Completed";
   visitLogForm.elements.summary.value = log.summary || "";
@@ -3285,9 +3317,13 @@ function syncVisitLogFormMode() {
 
 function resetVisitLogForm() {
   editingVisitLogId = "";
+  pendingTherapyUploadMeta = null;
+  therapyUploadReviewState = null;
+  closeVisitLogUploadReview();
   visitLogForm.reset();
   visitLogForm.elements.visitLogAppointmentId.value = "";
   visitLogForm.elements.visitLogId.value = "";
+  visitLogForm.elements.visitLogCustomProvider.value = "";
   visitLogProviderSelect.value = "";
   visitLogForm.elements.date.value = todayString();
   visitLogFormTitle.textContent = "Add visit log";
@@ -3480,7 +3516,8 @@ function buildVisitLogFromForm(formData) {
       ? cleanText(formData.get("customSpecialty"))
       : cleanText(formData.get("specialty")) || context?.specialty || "";
   const clinicValue = cleanText(formData.get("clinic")) || context?.clinic || "";
-  const providerValue = context?.provider || "";
+  const providerValue =
+    context?.provider || cleanText(formData.get("visitLogCustomProvider")) || existingLog?.provider || "";
   const logId = cleanText(formData.get("visitLogId")) || editingVisitLogId || crypto.randomUUID();
   const existingLog = state.visitLogs.find((log) => log.id === logId);
   const selectedCarePlanIds = getSelectedVisitLogCarePlanIds();
@@ -3490,7 +3527,9 @@ function buildVisitLogFromForm(formData) {
     providerId: context?.providerId || existingLog?.providerId || "",
     linkedAppointmentId: context?.linkedAppointmentId || existingLog?.linkedAppointmentId || "",
     date: cleanText(formData.get("date")),
-    provider: providerValue,
+    startTime: cleanText(formData.get("startTime")) || existingLog?.startTime || "",
+    endTime: cleanText(formData.get("endTime")) || existingLog?.endTime || "",
+    provider: providerValue || existingLog?.provider || "",
     clinic: clinicValue,
     phone: context?.phone || existingLog?.phone || "",
     portalLink: context?.portalLink || existingLog?.portalLink || "",
@@ -3506,6 +3545,10 @@ function buildVisitLogFromForm(formData) {
     linkedCarePlanIds: selectedCarePlanIds,
     createdAt: existingLog?.createdAt,
     updatedAt: new Date().toISOString(),
+    sourceFileName: pendingTherapyUploadMeta?.sourceFileName || existingLog?.sourceFileName || "",
+    sourceType: pendingTherapyUploadMeta?.sourceType || existingLog?.sourceType || "",
+    sourceExtractedAt: pendingTherapyUploadMeta?.sourceExtractedAt || existingLog?.sourceExtractedAt || "",
+    sourceExtractedText: pendingTherapyUploadMeta?.sourceExtractedText || existingLog?.sourceExtractedText || "",
   });
 }
 
@@ -3586,6 +3629,7 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
     } else {
       pendingCarePlanItemId = "";
       editingVisitLogId = "";
+      pendingTherapyUploadMeta = null;
       resetVisitLogForm();
       showVisitsList();
     }
@@ -6897,6 +6941,713 @@ function normalizeVisitHistory(visitHistory) {
   return normalizeVisitLogs(visitHistory);
 }
 
+const THERAPY_RECORD_KEYWORDS = [
+  "lpc",
+  "lcsw",
+  "lmft",
+  "therapist",
+  "therapy",
+  "counseling",
+  "counselling",
+  "mental health",
+  "psychologist",
+  "psychiatrist",
+  "counselor",
+  "counsellor",
+  "scheduled counseling",
+  "timelycare",
+];
+
+const THERAPY_THEME_HINTS = [
+  "attachment patterns",
+  "rumination",
+  "relationship uncertainty",
+  "emotional safety",
+  "faith/identity conflict",
+  "faith and identity",
+  "shame",
+  "boundaries",
+  "self-compassion",
+  "anxiety",
+  "uncertainty",
+  "anxious thoughts",
+  "inherited beliefs",
+  "rejection",
+  "trauma",
+  "stress",
+  "mood issues",
+  "homework",
+  "reflection questions",
+  "takeaways",
+];
+
+function truncateExtractedText(text, maxLength = 8000) {
+  const cleaned = cleanText(text);
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, maxLength)}…`;
+}
+
+async function extractTextFromPdfFile(file) {
+  if (typeof pdfjsLib === "undefined") {
+    throw new Error("PDF parser is not loaded.");
+  }
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  const chunks = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    chunks.push(content.items.map((item) => item.str).join(" "));
+  }
+  return chunks.join("\n");
+}
+
+async function extractTextFromDocxFile(file) {
+  if (typeof mammoth === "undefined") {
+    throw new Error("DOCX parser is not loaded.");
+  }
+  const buffer = await file.arrayBuffer();
+  const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+  return result.value || "";
+}
+
+async function extractTextFromUploadedFile(file) {
+  if (!file) {
+    throw new Error("No file selected.");
+  }
+
+  const extension = cleanText(file.name.split(".").pop()).toLowerCase();
+  const mimeType = cleanText(file.type).toLowerCase();
+
+  if (extension === "txt" || mimeType === "text/plain") {
+    return file.text();
+  }
+  if (extension === "pdf" || mimeType === "application/pdf") {
+    return extractTextFromPdfFile(file);
+  }
+  if (
+    extension === "docx" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return extractTextFromDocxFile(file);
+  }
+  if (extension === "doc" || mimeType === "application/msword") {
+    throw new Error("Legacy .doc files are not supported. Save as PDF, DOCX, or TXT.");
+  }
+  throw new Error("Unsupported file type. Upload a PDF, TXT, or DOCX file.");
+}
+
+function extractRecordSection(text, startLabels, endLabels = []) {
+  const normalized = String(text || "").replace(/\r/g, "\n");
+  for (const label of startLabels) {
+    const startRegex = new RegExp(`(?:^|\\n)\\s*${label}\\s*[:\\-]?\\s*\\n?`, "i");
+    const startMatch = normalized.match(startRegex);
+    if (!startMatch || startMatch.index == null) {
+      continue;
+    }
+    const startIndex = startMatch.index + startMatch[0].length;
+    let endIndex = normalized.length;
+    for (const endLabel of endLabels) {
+      const endRegex = new RegExp(`\\n\\s*${endLabel}\\s*[:\\-]?\\s*\\n?`, "i");
+      const endMatch = normalized.slice(startIndex).match(endRegex);
+      if (endMatch && endMatch.index != null) {
+        endIndex = Math.min(endIndex, startIndex + endMatch.index);
+      }
+    }
+    return cleanText(normalized.slice(startIndex, endIndex));
+  }
+  return "";
+}
+
+function extractRecordLabeledValue(text, labels) {
+  const normalized = String(text || "").replace(/\r/g, "\n");
+  for (const label of labels) {
+    const inlineRegex = new RegExp(`(?:^|\\n)\\s*${label}\\s*[:\\-]\\s*([^\\n]+)`, "i");
+    const inlineMatch = normalized.match(inlineRegex);
+    if (inlineMatch?.[1]) {
+      return cleanText(inlineMatch[1]);
+    }
+  }
+  return "";
+}
+
+function parseFlexibleDateToIso(value) {
+  const cleaned = cleanText(value);
+  if (!cleaned) {
+    return "";
+  }
+
+  const slashMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (slashMatch) {
+    const year = slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3];
+    const iso = `${year.padStart(4, "0")}-${String(slashMatch[1]).padStart(2, "0")}-${String(slashMatch[2]).padStart(2, "0")}`;
+    return isValidIsoDate(iso) ? iso : "";
+  }
+
+  const parsed = new Date(`${cleaned}T12:00:00`);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function parseFlexibleTimeTo24Hour(value) {
+  const cleaned = cleanText(value);
+  if (!cleaned) {
+    return "";
+  }
+
+  const twentyFourHourMatch = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+  if (twentyFourHourMatch) {
+    const hours = Number(twentyFourHourMatch[1]);
+    const minutes = Number(twentyFourHourMatch[2]);
+    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+  }
+
+  const meridiemMatch = cleaned.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (meridiemMatch) {
+    let hours = Number(meridiemMatch[1]);
+    const minutes = Number(meridiemMatch[2] || 0);
+    const meridiem = meridiemMatch[3].toUpperCase();
+    if (meridiem === "PM" && hours < 12) {
+      hours += 12;
+    }
+    if (meridiem === "AM" && hours === 12) {
+      hours = 0;
+    }
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }
+
+  return "";
+}
+
+function inferTherapySpecialty(text, providerName = "") {
+  const haystack = `${providerName}\n${text}`.toLowerCase();
+  if (/(psychiatrist|md\b|do\b)/i.test(providerName)) {
+    return "Mental Health";
+  }
+  if (/(lpc|lcsw|lmft|therapist|counselor|counsellor|counseling|counselling|therapy)/i.test(haystack)) {
+    return "Therapist";
+  }
+  if (haystack.includes("mental health")) {
+    return "Mental Health";
+  }
+  return "Therapist";
+}
+
+function extractReasonForVisit(text) {
+  const section = extractRecordSection(text, ["Reason for Visit", "Reason For Visit", "Chief Complaint"], [
+    "Care Plan",
+    "Prescriptions",
+    "Notes",
+    "Summary",
+    "Session",
+    "Start Time",
+    "End Time",
+  ]);
+  if (section) {
+    const lines = section
+      .split("\n")
+      .map((line) => line.replace(/^[\-\*\u2022\d\.\)]+\s*/, "").trim())
+      .filter(Boolean);
+    if (lines.length) {
+      return lines.join(", ");
+    }
+  }
+
+  const inline = extractRecordLabeledValue(text, ["Reason for Visit", "Reason For Visit", "Chief Complaint"]);
+  return inline;
+}
+
+function extractBulletTopics(sectionText) {
+  return String(sectionText || "")
+    .split("\n")
+    .map((line) => line.replace(/^[\-\*\u2022\d\.\)]+\s*/, "").trim())
+    .filter((line) => line.length > 3 && line.length < 120);
+}
+
+function extractTherapyThemes(text, carePlanText = "", reasonText = "") {
+  const combined = `${text}\n${carePlanText}\n${reasonText}`.toLowerCase();
+  const found = THERAPY_THEME_HINTS.filter((theme) => combined.includes(theme.toLowerCase()));
+  const bulletTopics = extractBulletTopics(carePlanText)
+    .map((line) => line.replace(/\?$/, "").trim())
+    .filter((line) => line.length <= 40);
+  return [...new Set([...found, ...bulletTopics.slice(0, 6)])];
+}
+
+function summarizeCarePlanTakeaways(carePlanText) {
+  const topics = extractBulletTopics(carePlanText);
+  if (!topics.length) {
+    return "";
+  }
+  const condensed = topics.slice(0, 7).join(", ");
+  return `Care plan included reflection questions about ${condensed.toLowerCase()}.`;
+}
+
+function buildTherapySummary(parsedRecord) {
+  const themes = parsedRecord.sessionThemes?.length
+    ? parsedRecord.sessionThemes
+    : extractTherapyThemes(parsedRecord.rawText || "", parsedRecord.carePlanText, parsedRecord.reason);
+  if (themes.length >= 2) {
+    return `Therapy session focused on ${themes.slice(0, 8).join(", ")}.`;
+  }
+  if (parsedRecord.reason) {
+    return `Therapy session focused on ${parsedRecord.reason.toLowerCase()}.`;
+  }
+  if (parsedRecord.carePlanText) {
+    const topics = extractBulletTopics(parsedRecord.carePlanText);
+    if (topics.length) {
+      return `Therapy session focused on ${topics.slice(0, 6).join(", ").toLowerCase()}.`;
+    }
+  }
+  return "Therapy session completed.";
+}
+
+function buildTherapyResultsText(parsedRecord) {
+  const parts = [];
+  const prescriptions = cleanText(parsedRecord.prescriptionsText);
+  if (/^none\.?$/i.test(prescriptions)) {
+    parts.push("No prescriptions.");
+  } else if (prescriptions) {
+    parts.push(`Prescriptions: ${prescriptions}.`);
+  }
+
+  const carePlanTakeaways = summarizeCarePlanTakeaways(parsedRecord.carePlanText);
+  if (carePlanTakeaways) {
+    parts.push(carePlanTakeaways);
+  } else if (parsedRecord.carePlanText) {
+    parts.push("Care plan notes captured from uploaded record.");
+  }
+
+  return parts.join(" ");
+}
+
+function parseTherapyRecord(text) {
+  const rawText = cleanText(text);
+  if (!rawText) {
+    return null;
+  }
+
+  const lowerText = rawText.toLowerCase();
+  const provider =
+    extractRecordLabeledValue(rawText, [
+      "Provider",
+      "Clinician",
+      "Therapist",
+      "Counselor",
+      "Counsellor",
+      "Seen by",
+    ]) || "";
+  const clinic =
+    extractRecordLabeledValue(rawText, [
+      "Clinic",
+      "Platform",
+      "Organization",
+      "Service location",
+      "Location",
+    ]) || (lowerText.includes("timelycare") ? "TimelyCare" : "");
+  const dateValue = extractRecordLabeledValue(rawText, [
+    "Visit date",
+    "Appointment date",
+    "Date of service",
+    "Session date",
+    "Date",
+  ]);
+  const startTimeValue = extractRecordLabeledValue(rawText, ["Start time", "Start Time", "Session start", "Begin time"]);
+  const endTimeValue = extractRecordLabeledValue(rawText, ["End time", "End Time", "Session end", "Finish time"]);
+  const carePlanText = extractRecordSection(rawText, ["Care Plan", "Treatment Plan", "Plan"], [
+    "Prescriptions",
+    "Medications",
+    "Notes",
+    "Summary",
+    "Follow-up",
+  ]);
+  const prescriptionsText = extractRecordLabeledValue(rawText, ["Prescriptions", "Medications"]);
+  const reason = extractReasonForVisit(rawText);
+  const specialty = inferTherapySpecialty(rawText, provider);
+  const date = parseFlexibleDateToIso(dateValue);
+  const startTime = parseFlexibleTimeTo24Hour(startTimeValue);
+  const endTime = parseFlexibleTimeTo24Hour(endTimeValue);
+  const hasTherapySignal =
+    THERAPY_RECORD_KEYWORDS.some((keyword) => lowerText.includes(keyword)) ||
+    THERAPY_RECORD_KEYWORDS.some((keyword) => provider.toLowerCase().includes(keyword));
+  const status =
+    lowerText.includes("scheduled counseling") && endTime
+      ? "Completed"
+      : endTime || lowerText.includes("completed")
+        ? "Completed"
+        : "Completed";
+
+  if (!hasTherapySignal && !provider && !date) {
+    return null;
+  }
+
+  const sessionThemes = extractTherapyThemes(rawText, carePlanText, reason);
+  return {
+    provider,
+    clinic,
+    specialty,
+    date,
+    startTime,
+    endTime,
+    status,
+    reason,
+    carePlanText,
+    prescriptionsText,
+    sessionThemes,
+    rawText,
+  };
+}
+
+function findMentalHealthCarePlanItem() {
+  return (state.carePlan || []).find(
+    (item) =>
+      normalizeLookupKey(item.name).includes("mental health") ||
+      normalizeLookupKey(item.category).includes("mental health")
+  );
+}
+
+function matchProviderFromRecordName(providerName) {
+  const cleaned = cleanText(providerName);
+  if (!cleaned) {
+    return null;
+  }
+
+  const exact = findCareTeamProviderByDoctor(cleaned);
+  if (exact) {
+    return exact;
+  }
+
+  const key = normalizeLookupKey(cleaned);
+  return (
+    getAllProviders().find((provider) => {
+      const providerKey = normalizeLookupKey(getProviderRecordName(provider));
+      return providerKey.includes(key) || key.includes(providerKey);
+    }) || null
+  );
+}
+
+function buildTherapyVisitLog(parsedRecord, uploadMeta = {}) {
+  const mentalHealthItem = findMentalHealthCarePlanItem();
+  const matchedProvider = matchProviderFromRecordName(parsedRecord.provider);
+  const summary = buildTherapySummary(parsedRecord);
+  const results = buildTherapyResultsText(parsedRecord);
+
+  return normalizeVisitLog({
+    id: uploadMeta.existingLogId || crypto.randomUUID(),
+    providerId: matchedProvider?.id || "",
+    provider: parsedRecord.provider || getProviderRecordName(matchedProvider) || "",
+    clinic: parsedRecord.clinic || matchedProvider?.clinic || "",
+    specialty: parsedRecord.specialty || matchedProvider?.specialty || "Therapist",
+    date: parsedRecord.date,
+    startTime: parsedRecord.startTime,
+    endTime: parsedRecord.endTime,
+    status: parsedRecord.status || "Completed",
+    reason: parsedRecord.reason,
+    summary,
+    results,
+    followUpNeeded: parsedRecord.followUpNeeded || "",
+    linkedCarePlanIds: mentalHealthItem ? [mentalHealthItem.id] : [],
+    sourceFileName: uploadMeta.sourceFileName || "",
+    sourceType: "uploaded-record",
+    sourceExtractedAt: uploadMeta.sourceExtractedAt || new Date().toISOString(),
+    sourceExtractedText: truncateExtractedText(uploadMeta.extractedText || parsedRecord.rawText || ""),
+  });
+}
+
+function detectDuplicateVisitLog(parsedRecord, visitLogs = state.visitLogs) {
+  const providerKey = normalizeLookupKey(parsedRecord.provider);
+  const date = cleanText(parsedRecord.date);
+  const startTime = cleanText(parsedRecord.startTime);
+  if (!providerKey || !date) {
+    return null;
+  }
+
+  return (
+    normalizeVisitLogs(visitLogs).find((log) => {
+      if (normalizeLookupKey(log.provider) !== providerKey || log.date !== date) {
+        return false;
+      }
+      if (startTime) {
+        return cleanText(log.startTime) === startTime;
+      }
+      return !cleanText(log.startTime);
+    }) || null
+  );
+}
+
+function setVisitLogUploadStatus(message, { isError = false } = {}) {
+  if (!visitLogUploadStatus) {
+    return;
+  }
+  visitLogUploadStatus.textContent = message;
+  visitLogUploadStatus.classList.toggle("is-hidden", !message);
+  visitLogUploadStatus.style.color = isError ? "#9b1c1c" : "";
+}
+
+function clearVisitLogUploadReviewError() {
+  if (!visitLogUploadReviewError) {
+    return;
+  }
+  visitLogUploadReviewError.textContent = "";
+  visitLogUploadReviewError.classList.add("is-hidden");
+}
+
+function showVisitLogUploadReviewError(message) {
+  if (!visitLogUploadReviewError) {
+    window.alert(message);
+    return;
+  }
+  visitLogUploadReviewError.textContent = message;
+  visitLogUploadReviewError.classList.remove("is-hidden");
+}
+
+function populateVisitLogUploadReviewForm(visitLog, uploadMeta = {}) {
+  if (!visitLogUploadReviewForm) {
+    return;
+  }
+
+  const mentalHealthItem = findMentalHealthCarePlanItem();
+  visitLogUploadReviewForm.elements.reviewVisitLogId.value = visitLog.id || "";
+  visitLogUploadReviewForm.elements.provider.value = visitLog.provider || "";
+  visitLogUploadReviewForm.elements.clinic.value = visitLog.clinic || "";
+  visitLogUploadReviewForm.elements.specialty.value = visitLog.specialty || "";
+  visitLogUploadReviewForm.elements.date.value = visitLog.date || "";
+  visitLogUploadReviewForm.elements.startTime.value = visitLog.startTime || "";
+  visitLogUploadReviewForm.elements.endTime.value = visitLog.endTime || "";
+  visitLogUploadReviewForm.elements.status.value = visitLog.status || "Completed";
+  visitLogUploadReviewForm.elements.reason.value = visitLog.reason || "";
+  visitLogUploadReviewForm.elements.summary.value = visitLog.summary || "";
+  visitLogUploadReviewForm.elements.results.value = visitLog.results || "";
+  visitLogUploadReviewForm.elements.followUpNeeded.value = visitLog.followUpNeeded || "";
+  visitLogUploadReviewForm.elements.linkedCarePlanId.value =
+    visitLog.linkedCarePlanIds?.[0] || mentalHealthItem?.id || "";
+  visitLogUploadReviewForm.elements.linkedCarePlanLabel.value = mentalHealthItem?.name || "Mental Health";
+
+  if (visitLogUploadReviewMeta) {
+    const duplicateNote = uploadMeta.isDuplicateUpdate ? " Updating an existing visit log." : "";
+    visitLogUploadReviewMeta.textContent = `Parsed from ${uploadMeta.sourceFileName || "uploaded record"}.${duplicateNote}`;
+  }
+}
+
+function openVisitLogUploadReview(visitLog, uploadMeta = {}) {
+  if (!visitLogUploadReview || !visitLogFormMount) {
+    return;
+  }
+
+  populateVisitLogUploadReviewForm(visitLog, uploadMeta);
+  clearVisitLogUploadReviewError();
+  visitLogFormMount.classList.add("is-hidden");
+  visitLogUploadReview.classList.remove("is-hidden");
+}
+
+function closeVisitLogUploadReview() {
+  if (!visitLogUploadReview || !visitLogFormMount) {
+    return;
+  }
+  clearVisitLogUploadReviewError();
+  setVisitLogUploadStatus("");
+  visitLogUploadReview.classList.add("is-hidden");
+  visitLogFormMount.classList.remove("is-hidden");
+  if (visitLogUploadRecordInput) {
+    visitLogUploadRecordInput.value = "";
+  }
+}
+
+function buildVisitLogFromUploadReviewForm(formData, uploadMeta = {}) {
+  const matchedProvider = matchProviderFromRecordName(cleanText(formData.get("provider")));
+  const linkedCarePlanIds = normalizeStringArray([
+    cleanText(formData.get("linkedCarePlanId")),
+    ...(findMentalHealthCarePlanItem()?.id ? [findMentalHealthCarePlanItem().id] : []),
+  ]);
+  const logId = cleanText(formData.get("reviewVisitLogId")) || crypto.randomUUID();
+  const existingLog = state.visitLogs.find((log) => log.id === logId);
+
+  return normalizeVisitLog({
+    id: logId,
+    providerId: matchedProvider?.id || existingLog?.providerId || "",
+    provider: cleanText(formData.get("provider")) || getProviderRecordName(matchedProvider) || "",
+    clinic: cleanText(formData.get("clinic")) || matchedProvider?.clinic || "",
+    specialty: cleanText(formData.get("specialty")) || matchedProvider?.specialty || "Therapist",
+    date: cleanText(formData.get("date")),
+    startTime: cleanText(formData.get("startTime")),
+    endTime: cleanText(formData.get("endTime")),
+    status: cleanText(formData.get("status")) || "Completed",
+    reason: cleanText(formData.get("reason")),
+    summary: cleanText(formData.get("summary")),
+    results: cleanText(formData.get("results")),
+    followUpNeeded: cleanText(formData.get("followUpNeeded")),
+    linkedCarePlanIds,
+    createdAt: existingLog?.createdAt,
+    sourceFileName: uploadMeta.sourceFileName || existingLog?.sourceFileName || "",
+    sourceType: uploadMeta.sourceType || existingLog?.sourceType || "uploaded-record",
+    sourceExtractedAt: uploadMeta.sourceExtractedAt || existingLog?.sourceExtractedAt || "",
+    sourceExtractedText: uploadMeta.sourceExtractedText || existingLog?.sourceExtractedText || "",
+  });
+}
+
+function persistUploadedVisitLog(visitLog) {
+  const logId = visitLog.id;
+  const existingIndex = state.visitLogs.findIndex((log) => log.id === logId);
+  let nextVisitLogs;
+
+  if (existingIndex >= 0) {
+    nextVisitLogs = state.visitLogs.map((log) =>
+      log.id === logId
+        ? {
+            ...log,
+            ...visitLog,
+            id: logId,
+            updatedAt: new Date().toISOString(),
+          }
+        : log
+    );
+  } else {
+    nextVisitLogs = [
+      {
+        ...visitLog,
+        id: logId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...state.visitLogs,
+    ];
+  }
+
+  state.visitLogs = nextVisitLogs;
+  syncVisitLogCarePlanLinks(logId, visitLog.linkedCarePlanIds);
+  persist();
+  render();
+}
+
+function applyTherapyReviewToVisitLogForm(visitLog, uploadMeta = {}) {
+  pendingTherapyUploadMeta = {
+    sourceFileName: uploadMeta.sourceFileName || visitLog.sourceFileName || "",
+    sourceType: uploadMeta.sourceType || visitLog.sourceType || "uploaded-record",
+    sourceExtractedAt: uploadMeta.sourceExtractedAt || visitLog.sourceExtractedAt || "",
+    sourceExtractedText: uploadMeta.sourceExtractedText || visitLog.sourceExtractedText || "",
+  };
+  therapyUploadReviewState = { visitLog, uploadMeta };
+
+  editingVisitLogId = visitLog.id || "";
+  visitLogForm.elements.visitLogId.value = visitLog.id || "";
+  visitLogForm.elements.visitLogCustomProvider.value = visitLog.provider || "";
+  const matchedProvider = matchProviderFromRecordName(visitLog.provider);
+  if (matchedProvider) {
+    visitLogProviderSelect.value = `${PROVIDER_OPTION_PREFIX}${matchedProvider.id}`;
+  } else {
+    visitLogProviderSelect.value = "";
+  }
+  visitLogForm.elements.clinic.value = visitLog.clinic || "";
+  setSelectWithCustomValue(
+    visitLogSpecialtySelect,
+    visitLogForm.elements.customSpecialty,
+    visitLog.specialty || "Therapist"
+  );
+  visitLogForm.elements.date.value = visitLog.date || "";
+  visitLogForm.elements.startTime.value = visitLog.startTime || "";
+  visitLogForm.elements.endTime.value = visitLog.endTime || "";
+  visitLogForm.elements.reason.value = visitLog.reason || "";
+  visitLogForm.elements.status.value = visitLog.status || "Completed";
+  visitLogForm.elements.summary.value = visitLog.summary || "";
+  visitLogForm.elements.results.value = visitLog.results || "";
+  visitLogForm.elements.followUpNeeded.value = visitLog.followUpNeeded || "";
+  selectedVisitLogCarePlanIds = normalizeStringArray(visitLog.linkedCarePlanIds);
+  if (findMentalHealthCarePlanItem()?.id && !selectedVisitLogCarePlanIds.includes(findMentalHealthCarePlanItem().id)) {
+    selectedVisitLogCarePlanIds.push(findMentalHealthCarePlanItem().id);
+  }
+  renderVisitLogCarePlanChecklist();
+  syncVisitLogOptionalSections();
+  syncVisitLogCustomSpecialtyVisibility();
+  visitLogFormTitle.textContent = editingVisitLogId ? "Edit visit log" : "Add visit log";
+  syncVisitLogFormMode();
+  closeVisitLogUploadReview();
+}
+
+async function handleVisitLogRecordUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  setVisitLogUploadStatus("Reading uploaded record…");
+  clearVisitLogFormError();
+
+  try {
+    const extractedText = await extractTextFromUploadedFile(file);
+    const parsedRecord = parseTherapyRecord(extractedText);
+    if (!parsedRecord || (!parsedRecord.provider && !parsedRecord.date && !parsedRecord.clinic)) {
+      throw new Error("Could not auto-fill this record. You can still enter it manually.");
+    }
+
+    const uploadMeta = {
+      sourceFileName: file.name,
+      sourceType: "uploaded-record",
+      sourceExtractedAt: new Date().toISOString(),
+      extractedText,
+    };
+
+    let existingLogId = editingVisitLogId || cleanText(visitLogForm.elements.visitLogId.value) || "";
+    const duplicate = detectDuplicateVisitLog(parsedRecord, state.visitLogs);
+    if (duplicate && duplicate.id !== existingLogId) {
+      const shouldUpdate = window.confirm("This looks like an existing visit. Update existing log?");
+      if (shouldUpdate) {
+        existingLogId = duplicate.id;
+        uploadMeta.isDuplicateUpdate = true;
+      }
+    }
+
+    const visitLog = buildTherapyVisitLog(parsedRecord, { ...uploadMeta, existingLogId });
+    therapyUploadReviewState = { visitLog, uploadMeta, parsedRecord };
+    openVisitLogUploadReview(visitLog, uploadMeta);
+    setVisitLogUploadStatus("");
+  } catch (error) {
+    setVisitLogUploadStatus(error.message || "Could not auto-fill this record. You can still enter it manually.", {
+      isError: true,
+    });
+  } finally {
+    if (visitLogUploadRecordInput) {
+      visitLogUploadRecordInput.value = "";
+    }
+  }
+}
+
+function handleVisitLogUploadReviewSubmit(event) {
+  event.preventDefault();
+  clearVisitLogUploadReviewError();
+
+  const formData = new FormData(visitLogUploadReviewForm);
+  const uploadMeta = therapyUploadReviewState?.uploadMeta || {};
+  const visitLog = buildVisitLogFromUploadReviewForm(formData, uploadMeta);
+  const validationMessage = validateVisitLogDraft(visitLog);
+  if (validationMessage) {
+    showVisitLogUploadReviewError(validationMessage);
+    return;
+  }
+
+  persistUploadedVisitLog(visitLog);
+  pendingTherapyUploadMeta = null;
+  therapyUploadReviewState = null;
+  editingVisitLogId = "";
+  resetVisitLogForm();
+  showVisitsList();
+}
+
+function handleVisitLogUploadReviewEditMore() {
+  if (!therapyUploadReviewState?.visitLog) {
+    return;
+  }
+
+  const formData = new FormData(visitLogUploadReviewForm);
+  const uploadMeta = therapyUploadReviewState.uploadMeta || {};
+  const visitLog = buildVisitLogFromUploadReviewForm(formData, uploadMeta);
+  applyTherapyReviewToVisitLogForm(visitLog, uploadMeta);
+}
+
 function normalizeVisitLog(log) {
   return {
     id: cleanText(log.id) || crypto.randomUUID(),
@@ -6904,6 +7655,8 @@ function normalizeVisitLog(log) {
     linkedAppointmentId: cleanText(log.linkedAppointmentId),
     linkedCarePlanIds: normalizeStringArray(log.linkedCarePlanIds),
     date: cleanText(log.date),
+    startTime: cleanText(log.startTime),
+    endTime: cleanText(log.endTime),
     provider: cleanText(log.provider),
     specialty: cleanText(log.specialty),
     reason: cleanText(log.reason),
@@ -6919,6 +7672,10 @@ function normalizeVisitLog(log) {
     insuranceAccepted: cleanText(log.insuranceAccepted),
     createdAt: cleanText(log.createdAt) || new Date().toISOString(),
     updatedAt: cleanText(log.updatedAt) || "",
+    sourceFileName: cleanText(log.sourceFileName),
+    sourceType: cleanText(log.sourceType),
+    sourceExtractedAt: cleanText(log.sourceExtractedAt),
+    sourceExtractedText: cleanText(log.sourceExtractedText),
   };
 }
 

@@ -977,6 +977,47 @@ textarea::placeholder {
   border: 1px solid rgba(15, 118, 110, 0.12);
 }
 
+.visit-log-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.visit-log-upload-status {
+  margin: 0;
+  flex: 1 1 100%;
+}
+
+.visit-log-upload-status.is-hidden {
+  display: none;
+}
+
+.visit-log-upload-review {
+  margin-top: 12px;
+  padding: 14px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.visit-log-upload-review.is-hidden {
+  display: none;
+}
+
+.visit-log-review-heading {
+  margin-bottom: 12px;
+}
+
+.visit-log-review-form {
+  display: grid;
+  gap: 12px;
+}
+
+.visit-log-shell.is-hidden {
+  display: none;
+}
+
 .visit-log-section-basics {
   padding: 14px 16px;
   border: 1px solid var(--line);

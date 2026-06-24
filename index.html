@@ -487,8 +487,15 @@
             <form id="visitLogForm" class="visit-log-form">
               <input type="hidden" name="visitLogAppointmentId" />
               <input type="hidden" name="visitLogId" />
+              <input type="hidden" name="visitLogCustomProvider" />
 
               <p class="visit-log-helper meta">Only provider/date/status are needed. Add details if you want.</p>
+
+              <div class="visit-log-upload-row">
+                <button id="visitLogUploadRecordButton" class="button-secondary" type="button">Upload Record &amp; Auto-Fill</button>
+                <input id="visitLogUploadRecordInput" type="file" accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+                <p id="visitLogUploadStatus" class="meta visit-log-upload-status is-hidden" role="status"></p>
+              </div>
 
               <section class="visit-log-section visit-log-section-basics">
                 <p class="visit-log-section-label eyebrow">Visit basics</p>
@@ -503,6 +510,14 @@
                   <label>
                     Visit date
                     <input type="date" name="date" />
+                  </label>
+                  <label>
+                    Start time
+                    <input type="time" name="startTime" />
+                  </label>
+                  <label>
+                    End time
+                    <input type="time" name="endTime" />
                   </label>
                   <label>
                     Status
@@ -618,6 +633,83 @@
                 </div>
               </div>
             </form>
+            </div>
+
+            <div id="visitLogUploadReview" class="visit-log-upload-review is-hidden">
+              <div class="section-heading visit-log-review-heading">
+                <div>
+                  <p class="eyebrow">Visits</p>
+                  <h2>Review auto-filled visit log</h2>
+                  <p id="visitLogUploadReviewMeta" class="meta"></p>
+                </div>
+              </div>
+              <form id="visitLogUploadReviewForm" class="visit-log-form visit-log-review-form">
+                <input type="hidden" name="reviewVisitLogId" />
+                <div class="form-grid visit-log-basics-grid">
+                  <label class="full-span">
+                    Provider
+                    <input type="text" name="provider" placeholder="Angela Nordin, LPC" />
+                  </label>
+                  <label>
+                    Clinic / platform
+                    <input type="text" name="clinic" placeholder="TimelyCare" />
+                  </label>
+                  <label>
+                    Specialty
+                    <input type="text" name="specialty" placeholder="Therapist" />
+                  </label>
+                  <label>
+                    Visit date
+                    <input type="date" name="date" />
+                  </label>
+                  <label>
+                    Start time
+                    <input type="time" name="startTime" />
+                  </label>
+                  <label>
+                    End time
+                    <input type="time" name="endTime" />
+                  </label>
+                  <label>
+                    Status
+                    <select name="status">
+                      <option>Completed</option>
+                      <option>Waiting on results</option>
+                      <option>Follow-up needed</option>
+                      <option>Resolved</option>
+                    </select>
+                  </label>
+                  <label class="full-span">
+                    Reason
+                    <input type="text" name="reason" placeholder="Trauma, Stress, Mood Issues" />
+                  </label>
+                  <label class="full-span">
+                    Summary
+                    <textarea name="summary" rows="2"></textarea>
+                  </label>
+                  <label class="full-span">
+                    Results / takeaways
+                    <textarea name="results" rows="2"></textarea>
+                  </label>
+                  <label class="full-span">
+                    Follow-up needed
+                    <input type="text" name="followUpNeeded" placeholder="Optional follow-up notes" />
+                  </label>
+                  <label class="full-span">
+                    Connected care plan
+                    <input type="text" name="linkedCarePlanLabel" readonly />
+                    <input type="hidden" name="linkedCarePlanId" />
+                  </label>
+                </div>
+                <p id="visitLogUploadReviewError" class="visit-log-form-error is-hidden" role="alert"></p>
+                <div class="visit-log-actions-sticky">
+                  <div class="visit-log-actions">
+                    <button id="visitLogUploadReviewSaveButton" class="button-primary" type="submit">Save Visit Log</button>
+                    <button id="visitLogUploadReviewEditButton" class="button-secondary" type="button">Edit More</button>
+                    <button id="visitLogUploadReviewCancelButton" class="button-secondary" type="button">Cancel</button>
+                  </div>
+                </div>
+              </form>
             </div>
             <div id="visitHistoryGlobalList" class="card-list empty-state is-hidden"></div>
           </section>
@@ -993,6 +1085,8 @@
       </nav>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
