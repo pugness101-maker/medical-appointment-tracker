@@ -595,6 +595,8 @@ const dashboardInsuranceButton = document.querySelector("#dashboardInsuranceButt
 const notificationButton = document.querySelector("#notificationButton");
 const suggestionPreview = document.querySelector("#suggestionPreview");
 const reminderPreview = document.querySelector("#reminderPreview");
+const appointmentPreviewPanel = document.querySelector("#appointmentPreviewPanel");
+const appointmentFormError = document.querySelector("#appointmentFormError");
 const profileForm = document.querySelector("#profileForm");
 const recommendationList = document.querySelector("#recommendationList");
 const providerSelect = document.querySelector("#providerSelect");
@@ -690,9 +692,30 @@ const carePlanConnectedVisitLogs = document.querySelector("#carePlanConnectedVis
 const carePlanAvailableVisitLogs = document.querySelector("#carePlanAvailableVisitLogs");
 const carePlanVisitLogSearch = document.querySelector("#carePlanVisitLogSearch");
 const carePlanAutoLinkButton = document.querySelector("#carePlanAutoLinkButton");
-const visitLogCarePlanSelect = document.querySelector("#visitLogCarePlanSelect");
+const visitLogCarePlanChecklist = document.querySelector("#visitLogCarePlanChecklist");
 const visitLogCarePlanHint = document.querySelector("#visitLogCarePlanHint");
+const visitLogResultsEditor = document.querySelector("#visitLogResultsEditor");
+const visitLogAddResultButton = document.querySelector("#visitLogAddResultButton");
 const homeCarePlanAction = document.querySelector("#homeCarePlanAction");
+const homeViewResultsAction = document.querySelector("#homeViewResultsAction");
+const homePendingResultsCount = document.querySelector("#homePendingResultsCount");
+const homeAbnormalResultsCount = document.querySelector("#homeAbnormalResultsCount");
+const homeResultsFollowUpCount = document.querySelector("#homeResultsFollowUpCount");
+const homeTreatmentCompletedCount = document.querySelector("#homeTreatmentCompletedCount");
+const homeResultsAttentionList = document.querySelector("#homeResultsAttentionList");
+const resultsList = document.querySelector("#resultsList");
+const resultsSearchInput = document.querySelector("#resultsSearchInput");
+const resultsFilterButtons = [...document.querySelectorAll("[data-results-filter]")];
+const resultsPanels = [...document.querySelectorAll("[data-results-view]")];
+const resultsForm = document.querySelector("#resultsForm");
+const resultsFormTitle = document.querySelector("#resultsFormTitle");
+const resultsFormBack = document.querySelector("#resultsFormBack");
+const resultsAddButton = document.querySelector("#resultsAddButton");
+const resultsSubmitButton = document.querySelector("#resultsSubmitButton");
+const resultsCancelButton = document.querySelector("#resultsCancelButton");
+const resultsDeleteButton = document.querySelector("#resultsDeleteButton");
+const resultsVisitLogSelect = document.querySelector("#resultsVisitLogSelect");
+const resultsCarePlanSelect = document.querySelector("#resultsCarePlanSelect");
 
 let editingAppointmentId = "";
 let activeRecordView = "list";
@@ -714,11 +737,18 @@ let activeCarePlanFilter = "all";
 let editingCarePlanId = "";
 let editingCarePlanLinkedVisitLogIds = [];
 let pendingCarePlanItemId = "";
+let editingResultId = "";
+let editingVisitLogResultDrafts = [];
+let selectedVisitLogCarePlanIds = [];
+let activeResultsFilter = "all";
+let activeResultsVisitFilter = "";
+let activeResultsCarePlanFilter = "";
 let activeTab = "dashboard";
 
 const TAB_SCREEN_MAP = {
   dashboard: "dashboard",
   visits: "appointments",
+  results: "results",
   carePlan: "care-plan",
   careTeam: "care-team",
   insurance: "insurance",
@@ -727,6 +757,7 @@ const TAB_SCREEN_MAP = {
 const SCREEN_TAB_MAP = {
   dashboard: "dashboard",
   appointments: "visits",
+  results: "results",
   "care-plan": "carePlan",
   "care-team": "careTeam",
   insurance: "insurance",
@@ -735,6 +766,7 @@ const SCREEN_TAB_MAP = {
 const TAB_HASH_MAP = {
   dashboard: "#dashboard",
   visits: "#visits",
+  results: "#results",
   carePlan: "#care-plan",
   careTeam: "#care-team",
   insurance: "#insurance",
@@ -744,10 +776,29 @@ const HASH_TAB_MAP = {
   dashboard: "dashboard",
   visits: "visits",
   appointments: "visits",
+  results: "results",
   "care-plan": "carePlan",
   "care-team": "careTeam",
   insurance: "insurance",
 };
+
+const RESULT_CATEGORIES = ["Lab", "STI / STD", "Imaging", "Diagnosis", "Medication / treatment", "Other"];
+const RESULT_STATUSES = [
+  "Pending",
+  "Normal",
+  "Abnormal",
+  "Positive",
+  "Negative",
+  "Treated",
+  "Needs follow-up",
+];
+
+const RESULT_CARE_PLAN_MATCH_RULES = [
+  { keys: ["sti", "std", "sexual health"], categories: ["STI / STD"] },
+  { keys: ["lab", "bloodwork", "vaccine", "vaccines"], categories: ["Lab"] },
+  { keys: ["dental", "vision", "mental"], categories: ["Other"] },
+  { keys: ["medication", "treatment"], categories: ["Medication / treatment", "Diagnosis"] },
+];
 
 function on(element, eventName, handler) {
   if (element) element.addEventListener(eventName, handler);
@@ -894,6 +945,50 @@ function bindEvents() {
   if (homeCarePlanAction) {
     on(homeCarePlanAction, "click", () => switchTab("carePlan"));
   }
+  if (homeViewResultsAction) {
+    on(homeViewResultsAction, "click", () => switchTab("results"));
+  }
+  if (resultsAddButton) {
+    on(resultsAddButton, "click", () => openResultsForm());
+  }
+  if (resultsFormBack) {
+    on(resultsFormBack, "click", showResultsList);
+  }
+  if (resultsCancelButton) {
+    on(resultsCancelButton, "click", showResultsList);
+  }
+  if (resultsDeleteButton) {
+    on(resultsDeleteButton, "click", () => {
+      if (editingResultId) {
+        deleteResult(editingResultId);
+      }
+    });
+  }
+  if (resultsForm) {
+    on(resultsForm, "submit", handleResultsSubmit);
+  }
+  if (resultsList) {
+    on(resultsList, "click", handleResultsListClick);
+  }
+  if (resultsSearchInput) {
+    on(resultsSearchInput, "input", renderResults);
+  }
+  resultsFilterButtons.forEach((button) => {
+    if (button) {
+      button.addEventListener("click", () => {
+        activeResultsFilter = button.dataset.resultsFilter || "all";
+        renderResults();
+      });
+    }
+  });
+  if (visitLogAddResultButton) {
+    on(visitLogAddResultButton, "click", handleVisitLogAddResultClick);
+  }
+  if (visitLogResultsEditor) {
+    on(visitLogResultsEditor, "click", handleVisitLogResultsEditorClick);
+    on(visitLogResultsEditor, "change", syncAllVisitLogResultDraftsFromDom);
+    on(visitLogResultsEditor, "input", syncAllVisitLogResultDraftsFromDom);
+  }
   if (carePlanAddItemButton) {
     on(carePlanAddItemButton, "click", () => openCarePlanForm());
   }
@@ -994,14 +1089,21 @@ function bindEvents() {
   on(providerSpecialtySelect, "change", syncProviderCustomSpecialtyVisibility);
   on(visitLogProviderSelect, "change", () => {
     syncVisitLogProviderSelection();
-    renderVisitLogCarePlanSelect();
+    renderVisitLogCarePlanChecklist();
   });
   on(visitLogSpecialtySelect, "change", () => {
     syncVisitLogCustomSpecialtyVisibility();
-    renderVisitLogCarePlanSelect();
+    renderVisitLogCarePlanChecklist();
   });
   if (visitLogForm?.elements.reason) {
-    on(visitLogForm.elements.reason, "input", renderVisitLogCarePlanSelect);
+    on(visitLogForm.elements.reason, "input", renderVisitLogCarePlanChecklist);
+  }
+  if (visitLogForm?.elements.clinic) {
+    on(visitLogForm.elements.clinic, "input", renderVisitLogCarePlanChecklist);
+  }
+  if (visitLogCarePlanChecklist) {
+    on(visitLogCarePlanChecklist, "change", handleVisitLogCarePlanChecklistChange);
+    on(visitLogCarePlanChecklist, "click", handleVisitLogCarePlanChecklistClick);
   }
   window.addEventListener("hashchange", handleHashChange);
   if (repeatVisitToggle) {
@@ -1010,9 +1112,14 @@ function bindEvents() {
       syncAppointmentPreview();
     });
   }
-  ["appointmentDate", "nextRecommendedVisit", "intervalMonths", "reminderDaysBefore"].forEach((fieldName) => {
+  ["appointmentDate", "nextRecommendedVisit", "intervalMonths", "reminderDaysBefore", "clinic", "customDoctor", "customSpecialty"].forEach((fieldName) => {
     if (appointmentForm?.elements[fieldName]) {
       appointmentForm.elements[fieldName].addEventListener("input", syncAppointmentPreview);
+    }
+  });
+  ["doctor", "specialty", "repeatVisit"].forEach((fieldName) => {
+    if (appointmentForm?.elements[fieldName]) {
+      appointmentForm.elements[fieldName].addEventListener("change", syncAppointmentPreview);
     }
   });
 }
@@ -1062,6 +1169,8 @@ function openVisitLogTab(appointmentId = "", setToday = false) {
     if (setToday && !visitLogForm.elements.date.value) {
       visitLogForm.elements.date.value = todayString();
     }
+    loadVisitLogCarePlanSelection("");
+    renderVisitLogCarePlanChecklist();
   } else {
     resetVisitLogForm();
   }
@@ -1089,6 +1198,7 @@ function setSubtab(group, target) {
 
 function handleAppointmentSubmit(event) {
   event.preventDefault();
+  clearAppointmentFormError();
   const formData = new FormData(appointmentForm);
   const clinicValue = cleanText(formData.get("clinic"));
   const placeValue = cleanText(formData.get("place"));
@@ -1098,18 +1208,32 @@ function handleAppointmentSubmit(event) {
   const resultFiles = appointmentForm.elements.resultFiles?.files
     ? Array.from(appointmentForm.elements.resultFiles.files).map((file) => file.name)
     : [];
+  const doctor = resolveAppointmentDoctorValue(cleanText(formData.get("doctor")), cleanText(formData.get("customDoctor")));
+  const specialty =
+    cleanText(formData.get("specialty")) === "__custom__"
+      ? cleanText(formData.get("customSpecialty"))
+      : cleanText(formData.get("specialty"));
+  const appointmentDate = cleanText(formData.get("appointmentDate"));
+  const notesValue = cleanText(formData.get("questionsToAsk"));
+
+  if (!isValidIsoDate(appointmentDate)) {
+    showAppointmentFormError("Add an appointment date before saving.");
+    return;
+  }
+  if (!doctor && !clinicValue && !specialty) {
+    showAppointmentFormError("Add a provider, clinic, or specialty before saving.");
+    return;
+  }
+
   const appointment = {
     id: cleanText(formData.get("appointmentId")) || crypto.randomUUID(),
-    doctor: resolveAppointmentDoctorValue(cleanText(formData.get("doctor")), cleanText(formData.get("customDoctor"))),
-    specialty:
-      cleanText(formData.get("specialty")) === "__custom__"
-        ? cleanText(formData.get("customSpecialty"))
-        : cleanText(formData.get("specialty")),
+    doctor,
+    specialty,
     clinic: clinicValue || extractClinicName(placeValue),
     place: placeValue,
     insuranceAccepted: cleanText(formData.get("insuranceAccepted")),
     portalLink: cleanText(formData.get("portalLink")),
-    appointmentDate: cleanText(formData.get("appointmentDate")),
+    appointmentDate,
     appointmentTime: cleanText(formData.get("appointmentTime")),
     appointmentStatus: cleanText(formData.get("appointmentStatus")) || "Planned",
     nextRecommendedVisit: cleanText(formData.get("nextRecommendedVisit")),
@@ -1124,20 +1248,16 @@ function handleAppointmentSubmit(event) {
       cleanText(formData.get("reasonForVisit")) === "__custom__"
         ? cleanText(formData.get("customReasonForVisit"))
         : cleanText(formData.get("reasonForVisit")),
-    questionsToAsk: cleanText(formData.get("questionsToAsk")),
+    questionsToAsk: notesValue,
     medications: cleanText(formData.get("medications")),
     testResults: cleanText(formData.get("testResults")),
     resultFiles: resultFiles.length ? resultFiles : existingAppointment?.resultFiles || [],
     visitHistory: [],
-    notes: cleanText(formData.get("notes")),
+    notes: notesValue,
     userCreated: true,
     autoGeneratedFromVisitLog: false,
     updatedAt: new Date().toISOString(),
   };
-
-  if (!appointment.doctor) {
-    return;
-  }
 
   const existingIndex = state.appointments.findIndex((item) => item.id === appointment.id);
   if (existingIndex >= 0) {
@@ -1392,6 +1512,8 @@ function syncAppointmentProviderDetails() {
   appointmentForm.elements.insuranceAccepted.value = provider.insuranceAccepted || "";
   appointmentForm.elements.portalLink.value = provider.portalLink || "";
   syncCustomFieldVisibility();
+  syncAppointmentPreview();
+  syncAppointmentOptionalSections();
 }
 
 function getProviderRecordName(provider) {
@@ -1670,6 +1792,12 @@ function handleAppointmentListClick(event) {
     return;
   }
 
+  const viewVisitResultsId = event.target.closest("[data-view-visit-results]")?.dataset.viewVisitResults;
+  if (viewVisitResultsId) {
+    openResultsForVisitLog(viewVisitResultsId);
+    return;
+  }
+
   const viewAllHistoryAppointmentId = event.target.closest("[data-view-all-history]")?.dataset.viewAllHistory;
   if (viewAllHistoryAppointmentId) {
     openProviderVisitLogsInRecords(viewAllHistoryAppointmentId);
@@ -1757,10 +1885,11 @@ function handleRecommendationListClick(event) {
   appointmentForm.elements.repeatVisit.checked = true;
   appointmentForm.elements.intervalMonths.value = recommendation.intervalMonths;
   appointmentForm.elements.reminderDaysBefore.value = 14;
-  appointmentForm.elements.notes.value = `${recommendation.reason}\nSource: ${recommendation.sourceLabel}`;
+  appointmentForm.elements.questionsToAsk.value = `${recommendation.reason}\nSource: ${recommendation.sourceLabel}`;
   syncRepeatRuleVisibility();
   syncCustomFieldVisibility();
   syncAppointmentPreview();
+  syncAppointmentOptionalSections();
   switchScreen("appointments");
   showVisitsView("appointment-form");
 }
@@ -1917,16 +2046,89 @@ function loadAppointmentIntoForm(appointmentId) {
   appointmentForm.elements.reminderEnabled.value = appointment.reminderEnabled === false ? "no" : "yes";
   appointmentForm.elements.contactPhone.value = appointment.contactPhone || "";
   setSelectWithCustomValue(reasonSelect, appointmentForm.elements.customReasonForVisit, appointment.reasonForVisit || "");
-  appointmentForm.elements.questionsToAsk.value = appointment.questionsToAsk || "";
+  appointmentForm.elements.questionsToAsk.value = [appointment.questionsToAsk, appointment.notes].filter(Boolean).join("\n\n");
   appointmentForm.elements.medications.value = appointment.medications || "";
   appointmentForm.elements.testResults.value = appointment.testResults || "";
-  appointmentForm.elements.notes.value = appointment.notes || "";
   appointmentFormTitle.textContent = "Edit appointment";
   appointmentCancelButton.classList.remove("is-hidden");
   editingVisitHistory = getVisitLogsForAppointment(appointment);
   syncCustomFieldVisibility();
   syncAppointmentPreview();
   syncFollowUpShortcutButtons(appointmentForm, "next-visit");
+  syncAppointmentOptionalSections();
+}
+
+function syncAppointmentOptionalSections() {
+  const collapsibles = appointmentForm?.querySelectorAll(".appointment-section-collapsible");
+  if (!collapsibles?.length || !appointmentForm) {
+    return;
+  }
+
+  const hasReminder =
+    appointmentForm.elements.repeatVisit?.checked ||
+    cleanText(appointmentForm.elements.nextRecommendedVisit?.value) ||
+    Number(appointmentForm.elements.reminderDaysBefore?.value) > 0;
+  const hasExtra =
+    cleanText(appointmentForm.elements.place?.value) ||
+    cleanText(appointmentForm.elements.contactPhone?.value) ||
+    cleanText(appointmentForm.elements.insuranceAccepted?.value) ||
+    cleanText(appointmentForm.elements.portalLink?.value) ||
+    cleanText(appointmentForm.elements.questionsToAsk?.value) ||
+    cleanText(appointmentForm.elements.medications?.value) ||
+    cleanText(appointmentForm.elements.testResults?.value);
+
+  collapsibles[0].open = Boolean(hasReminder);
+  if (collapsibles[1]) {
+    collapsibles[1].open = Boolean(hasExtra);
+  }
+}
+
+function clearAppointmentFormError() {
+  if (!appointmentFormError) {
+    return;
+  }
+  appointmentFormError.textContent = "";
+  appointmentFormError.classList.add("is-hidden");
+}
+
+function showAppointmentFormError(message) {
+  if (!appointmentFormError) {
+    window.alert(message);
+    return;
+  }
+  appointmentFormError.textContent = message;
+  appointmentFormError.classList.remove("is-hidden");
+  appointmentFormError.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function shouldShowAppointmentPreview() {
+  if (!appointmentForm) {
+    return false;
+  }
+
+  const appointmentDate = cleanText(appointmentForm.elements.appointmentDate?.value);
+  const doctor = resolveAppointmentDoctorValue(
+    cleanText(appointmentForm.elements.doctor?.value),
+    cleanText(appointmentForm.elements.customDoctor?.value)
+  );
+  const clinic = cleanText(appointmentForm.elements.clinic?.value);
+  const specialty =
+    cleanText(appointmentForm.elements.specialty?.value) === "__custom__"
+      ? cleanText(appointmentForm.elements.customSpecialty?.value)
+      : cleanText(appointmentForm.elements.specialty?.value);
+  const nextRecommendedVisit = cleanText(appointmentForm.elements.nextRecommendedVisit?.value);
+  const repeatEnabled = appointmentForm.elements.repeatVisit?.checked;
+  const reminderDays = numberOrFallback(appointmentForm.elements.reminderDaysBefore?.value, 0);
+
+  return (
+    isValidIsoDate(appointmentDate) ||
+    Boolean(doctor) ||
+    Boolean(clinic) ||
+    Boolean(specialty) ||
+    isValidIsoDate(nextRecommendedVisit) ||
+    repeatEnabled ||
+    reminderDays > 0
+  );
 }
 
 function resetAppointmentForm() {
@@ -1939,11 +2141,16 @@ function resetAppointmentForm() {
   appointmentForm.elements.reminderDaysBefore.value = 14;
   appointmentForm.elements.reminderEnabled.value = "yes";
   appointmentForm.elements.appointmentStatus.value = "Planned";
+  appointmentForm.elements.appointmentDate.value = todayString();
   appointmentFormTitle.textContent = "Add appointment";
   appointmentCancelButton.classList.add("is-hidden");
   editingVisitHistory = [];
+  clearAppointmentFormError();
   renderSelectOptions();
   syncCustomFieldVisibility();
+  appointmentForm?.querySelectorAll(".appointment-section-collapsible").forEach((section) => {
+    section.open = false;
+  });
   syncAppointmentPreview();
   if (appointmentFollowUpHint) {
     appointmentFollowUpHint.textContent = "";
@@ -2004,6 +2211,8 @@ function render() {
   renderVisitTimelineList(summaries);
   renderRecordView();
   renderCarePlan();
+  renderResults();
+  renderResultsDashboard();
   updateNotificationButton();
 }
 
@@ -2577,6 +2786,8 @@ function renderVisitLogRecordCard(entry) {
           <span class="pill ${visitLogStatusClass(entry.status)}">${escapeHtml(entry.status || "Completed")}</span>
         </div>
       </div>
+      ${renderVisitLogCarePlanSummary(entry)}
+      ${renderVisitLogResultsSummary(entry)}
       <div class="record-card-actions">
         <button class="button-secondary" type="button" data-edit-visit-log="${entry.id}" data-appointment-id="${entry.appointmentId}">Edit</button>
         <button class="button-delete" type="button" data-delete-visit-log="${entry.id}">Delete</button>
@@ -2901,6 +3112,9 @@ function deleteRecordsByIds(idsToDelete) {
   }
 
   state.visitLogs = state.visitLogs.filter((log) => !deleteIds.has(log.id));
+  state.results = state.results.filter(
+    (result) => !deleteIds.has(result.id) && !deleteIds.has(result.linkedVisitLogId)
+  );
 
   state.appointments.forEach((appointment) => {
     appointment.visitHistory = normalizeVisitHistory(appointment.visitHistory || []).filter(
@@ -3025,8 +3239,10 @@ function loadVisitLogIntoEditor(visitLogId) {
   syncVisitLogCustomSpecialtyVisibility();
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
   syncVisitLogFormMode();
-  renderVisitLogCarePlanSelect();
+  loadVisitLogCarePlanSelection(log.id);
+  renderVisitLogCarePlanChecklist();
   syncVisitLogOptionalSections();
+  loadVisitLogResultDrafts(log.id);
 }
 
 function syncVisitLogOptionalSections() {
@@ -3036,9 +3252,10 @@ function syncVisitLogOptionalSections() {
   }
 
   const hasFollowUp =
-    [...(visitLogCarePlanSelect?.selectedOptions || [])].length > 0 ||
+    getSelectedVisitLogCarePlanIds().length > 0 ||
     cleanText(visitLogForm.elements.followUpDueDate?.value) ||
     cleanText(visitLogForm.elements.followUpNeeded?.value);
+  const hasResults = editingVisitLogResultDrafts.length > 0;
   const hasNotes =
     cleanText(visitLogForm.elements.summary?.value) ||
     cleanText(visitLogForm.elements.results?.value) ||
@@ -3046,7 +3263,10 @@ function syncVisitLogOptionalSections() {
 
   collapsibles[0].open = Boolean(hasFollowUp);
   if (collapsibles[1]) {
-    collapsibles[1].open = Boolean(hasNotes);
+    collapsibles[1].open = Boolean(hasResults);
+  }
+  if (collapsibles[2]) {
+    collapsibles[2].open = Boolean(hasNotes);
   }
 }
 
@@ -3082,7 +3302,10 @@ function resetVisitLogForm() {
   visitLogForm?.querySelectorAll(".visit-log-section-collapsible").forEach((section) => {
     section.open = false;
   });
-  renderVisitLogCarePlanSelect();
+  editingVisitLogResultDrafts = [];
+  renderVisitLogResultsEditor();
+  selectedVisitLogCarePlanIds = pendingCarePlanItemId ? [pendingCarePlanItemId] : [];
+  renderVisitLogCarePlanChecklist();
 }
 
 function syncVisitLogProviderSelection() {
@@ -3113,7 +3336,7 @@ function syncVisitLogProviderSelection() {
   renderVisitHistoryGlobalList();
   renderVisitLogProviderInfo(context);
   syncVisitLogCustomSpecialtyVisibility();
-  renderVisitLogCarePlanSelect();
+  renderVisitLogCarePlanChecklist();
 }
 
 function renderVisitLogProviderInfo(context) {
@@ -3157,7 +3380,7 @@ function applyVisitLogTemplate(templateKey) {
   if (dateValue && template.followUpDueMonths && !cleanText(visitLogForm.elements.followUpDueDate.value)) {
     visitLogForm.elements.followUpDueDate.value = addMonths(dateValue, template.followUpDueMonths);
   syncFollowUpShortcutButtons(visitLogForm, "follow-up");
-  renderVisitLogCarePlanSelect();
+  renderVisitLogCarePlanChecklist();
 }
 }
 
@@ -3225,7 +3448,10 @@ function resetVisitLogFormExceptProvider() {
   visitLogForm?.querySelectorAll(".visit-log-section-collapsible").forEach((section) => {
     section.open = false;
   });
-  renderVisitLogCarePlanSelect();
+  editingVisitLogResultDrafts = [];
+  renderVisitLogResultsEditor();
+  selectedVisitLogCarePlanIds = pendingCarePlanItemId ? [pendingCarePlanItemId] : [];
+  renderVisitLogCarePlanChecklist();
 }
 
 function clearVisitLogFormError() {
@@ -3257,9 +3483,7 @@ function buildVisitLogFromForm(formData) {
   const providerValue = context?.provider || "";
   const logId = cleanText(formData.get("visitLogId")) || editingVisitLogId || crypto.randomUUID();
   const existingLog = state.visitLogs.find((log) => log.id === logId);
-  const selectedCarePlanIds = visitLogCarePlanSelect
-    ? [...visitLogCarePlanSelect.selectedOptions].map((option) => option.value).filter(Boolean)
-    : [];
+  const selectedCarePlanIds = getSelectedVisitLogCarePlanIds();
 
   return normalizeVisitLog({
     id: logId,
@@ -3351,10 +3575,9 @@ function saveVisitLog({ addAnother = false, scheduleFollowUp = false } = {}) {
 
     state.visitLogs = nextVisitLogs;
 
-    const selectedCarePlanIds = visitLogCarePlanSelect
-      ? [...visitLogCarePlanSelect.selectedOptions].map((option) => option.value).filter(Boolean)
-      : [];
+    const selectedCarePlanIds = getSelectedVisitLogCarePlanIds();
     syncVisitLogCarePlanLinks(logId, selectedCarePlanIds);
+    syncVisitLogResultsFromDrafts(logId, selectedCarePlanIds);
 
     persist();
 
@@ -3667,6 +3890,13 @@ function buildAppointmentSummary(appointment) {
 
 function syncAppointmentPreview() {
   if (!appointmentForm || !suggestionPreview || !reminderPreview) return;
+
+  if (!shouldShowAppointmentPreview()) {
+    appointmentPreviewPanel?.classList.add("is-hidden");
+    return;
+  }
+
+  appointmentPreviewPanel?.classList.remove("is-hidden");
   const latestVisitDate = getLatestVisitDate(editingVisitHistory);
   const appointmentDate = cleanText(appointmentForm.elements.appointmentDate.value);
   const nextRecommendedVisit = cleanText(appointmentForm.elements.nextRecommendedVisit.value);
@@ -3676,8 +3906,10 @@ function syncAppointmentPreview() {
   const anchorDate = latestVisitDate || appointmentDate;
 
   if ((!anchorDate || !intervalMonths) && !nextRecommendedVisit) {
-    suggestionPreview.textContent = "Next visit suggestion will appear here.";
-    reminderPreview.textContent = "Reminder timing will appear here.";
+    suggestionPreview.textContent = "Set a repeat interval or next recommended visit to preview follow-up timing.";
+    reminderPreview.textContent = reminderDaysBefore
+      ? `Reminder will start ${reminderDaysBefore} day${reminderDaysBefore === 1 ? "" : "s"} before the next visit.`
+      : "Reminder timing will appear here.";
     return;
   }
 
@@ -3789,6 +4021,9 @@ function switchScreen(target, { updateHash = true, scrollToTop = true } = {}) {
   if (target === "care-plan" && previousScreen !== "care-plan") {
     showCarePlanList();
   }
+  if (target === "results" && previousScreen !== "results") {
+    showResultsList();
+  }
   if (updateHash) {
     const nextHash = TAB_HASH_MAP[activeTab] || `#${target}`;
     if (location.hash !== nextHash) {
@@ -3873,6 +4108,7 @@ function getEmptyState() {
   return {
     appointments: [],
     visitLogs: [],
+    results: [],
     carePlan: [],
     providers: [],
     insurance: {},
@@ -3893,6 +4129,7 @@ function normalizeState(saved) {
     ...emptyState,
     appointments: migrated.appointments,
     visitLogs: migrated.visitLogs,
+    results: normalizeResults(Array.isArray(saved?.results) ? saved.results : []),
     providers: Array.isArray(saved?.providers)
       ? saved.providers.map(normalizeProvider).filter(Boolean)
       : [],
@@ -4012,6 +4249,650 @@ function handleImportBackupFile(event) {
   reader.readAsText(file);
 }
 
+function normalizeResultItem(item) {
+  const testName = cleanText(item?.testName);
+  if (!testName) {
+    return null;
+  }
+
+  return {
+    id: cleanText(item?.id) || crypto.randomUUID(),
+    linkedVisitLogId: cleanText(item?.linkedVisitLogId),
+    linkedCarePlanIds: normalizeStringArray(item?.linkedCarePlanIds),
+    resultDate: cleanText(item?.resultDate),
+    orderedDate: cleanText(item?.orderedDate),
+    receivedDate: cleanText(item?.receivedDate),
+    provider: cleanText(item?.provider),
+    clinic: cleanText(item?.clinic),
+    testName,
+    category: RESULT_CATEGORIES.includes(cleanText(item?.category)) ? cleanText(item.category) : "Other",
+    status: RESULT_STATUSES.includes(cleanText(item?.status)) ? cleanText(item.status) : "Pending",
+    details: cleanText(item?.details),
+    treatment: cleanText(item?.treatment),
+    treatmentDate: cleanText(item?.treatmentDate),
+    followUpNeeded: cleanText(item?.followUpNeeded),
+    followUpDueDate: cleanText(item?.followUpDueDate),
+    createdAt: cleanText(item?.createdAt) || new Date().toISOString(),
+    updatedAt: cleanText(item?.updatedAt) || "",
+  };
+}
+
+function normalizeResults(results) {
+  return (results || []).map((item) => normalizeResultItem(item)).filter(Boolean).sort((a, b) => compareOptionalDates(getResultSortDate(b), getResultSortDate(a)));
+}
+
+function getResultSortDate(result) {
+  return cleanText(result?.resultDate) || cleanText(result?.receivedDate) || cleanText(result?.orderedDate) || "";
+}
+
+function createEmptyResultDraft(overrides = {}) {
+  const formData = visitLogForm ? new FormData(visitLogForm) : null;
+  const providerRecord = getProviderFromSelectValue(visitLogProviderSelect?.value);
+  return {
+    id: crypto.randomUUID(),
+    linkedVisitLogId: editingVisitLogId || "",
+    linkedCarePlanIds: [],
+    resultDate: cleanText(formData?.get("date")) || todayString(),
+    orderedDate: cleanText(formData?.get("date")) || todayString(),
+    receivedDate: "",
+    provider: providerRecord ? getProviderRecordName(providerRecord) : "",
+    clinic: cleanText(formData?.get("clinic")) || "",
+    testName: "",
+    category: "Lab",
+    status: "Pending",
+    details: "",
+    treatment: "",
+    treatmentDate: "",
+    followUpNeeded: "",
+    followUpDueDate: "",
+    ...overrides,
+  };
+}
+
+function getResultsForVisitLog(visitLogId) {
+  if (!visitLogId) {
+    return [];
+  }
+  return normalizeResults(state.results.filter((result) => result.linkedVisitLogId === visitLogId));
+}
+
+function getCarePlanLinkedResults(item) {
+  const linkedIds = new Set();
+  const results = (state.results || []).filter((result) => {
+    if (normalizeStringArray(result.linkedCarePlanIds).includes(item.id)) {
+      linkedIds.add(result.id);
+      return true;
+    }
+    if (resultMatchesCarePlanItem(result, item)) {
+      linkedIds.add(result.id);
+      return true;
+    }
+    return false;
+  });
+  return normalizeResults(results);
+}
+
+function resultMatchesCarePlanItem(result, carePlanItem) {
+  const category = cleanText(carePlanItem?.category).toLowerCase();
+  const name = cleanText(carePlanItem?.name).toLowerCase();
+  const haystack = [category, name, cleanText(result?.testName), cleanText(result?.details)].join(" ").toLowerCase();
+  const resultCategory = cleanText(result?.category);
+
+  for (const rule of RESULT_CARE_PLAN_MATCH_RULES) {
+    if (!rule.keys.some((key) => category.includes(key) || name.includes(key))) {
+      continue;
+    }
+    if (rule.categories.includes(resultCategory)) {
+      return true;
+    }
+    if (rule.categories.some((entry) => haystack.includes(entry.toLowerCase()))) {
+      return true;
+    }
+  }
+
+  if (category && resultCategory && category.includes(resultCategory.toLowerCase())) {
+    return true;
+  }
+  return false;
+}
+
+function resultStatusClass(status) {
+  const value = cleanText(status).toLowerCase();
+  if (value === "pending") return "result-status-pending";
+  if (value === "normal" || value === "negative") return "result-status-normal";
+  if (value === "abnormal" || value === "positive" || value === "needs follow-up") return "result-status-abnormal";
+  if (value === "treated") return "result-status-treated";
+  return "result-status-pending";
+}
+
+function getResultSearchHaystack(result) {
+  return [
+    result.testName,
+    result.category,
+    result.status,
+    result.provider,
+    result.clinic,
+    result.details,
+    result.treatment,
+    result.followUpNeeded,
+    result.resultDate,
+    result.receivedDate,
+  ]
+    .map((value) => cleanText(value).toLowerCase())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getFilteredResults() {
+  const query = cleanText(resultsSearchInput?.value).toLowerCase();
+  let items = normalizeResults(state.results);
+
+  if (activeResultsVisitFilter) {
+    items = items.filter((result) => result.linkedVisitLogId === activeResultsVisitFilter);
+  }
+
+  if (activeResultsCarePlanFilter) {
+    const carePlanItem = state.carePlan.find((entry) => entry.id === activeResultsCarePlanFilter);
+    items = items.filter(
+      (result) =>
+        normalizeStringArray(result.linkedCarePlanIds).includes(activeResultsCarePlanFilter) ||
+        (carePlanItem && resultMatchesCarePlanItem(result, carePlanItem))
+    );
+  }
+
+  if (query) {
+    items = items.filter((result) => getResultSearchHaystack(result).includes(query));
+  }
+
+  if (activeResultsFilter === "pending") {
+    items = items.filter((result) => result.status === "Pending");
+  } else if (activeResultsFilter === "abnormal") {
+    items = items.filter((result) => result.status === "Abnormal" || result.status === "Positive");
+  } else if (activeResultsFilter === "follow-up") {
+    items = items.filter((result) => result.status === "Needs follow-up" || cleanText(result.followUpNeeded) || isValidIsoDate(result.followUpDueDate));
+  } else if (activeResultsFilter === "treated") {
+    items = items.filter((result) => result.status === "Treated" || cleanText(result.treatment));
+  }
+
+  return items;
+}
+
+function getResultsDashboardCounts() {
+  const results = normalizeResults(state.results);
+  return {
+    pending: results.filter((result) => result.status === "Pending").length,
+    abnormal: results.filter((result) => result.status === "Abnormal" || result.status === "Positive").length,
+    followUp: results.filter(
+      (result) => result.status === "Needs follow-up" || cleanText(result.followUpNeeded) || (isValidIsoDate(result.followUpDueDate) && result.followUpDueDate <= addDays(todayString(), 30))
+    ).length,
+    treated: results.filter((result) => result.status === "Treated" || cleanText(result.treatment)).length,
+  };
+}
+
+function renderResultsDashboard() {
+  const counts = getResultsDashboardCounts();
+  if (homePendingResultsCount) homePendingResultsCount.textContent = String(counts.pending);
+  if (homeAbnormalResultsCount) homeAbnormalResultsCount.textContent = String(counts.abnormal);
+  if (homeResultsFollowUpCount) homeResultsFollowUpCount.textContent = String(counts.followUp);
+  if (homeTreatmentCompletedCount) homeTreatmentCompletedCount.textContent = String(counts.treated);
+
+  if (!homeResultsAttentionList) {
+    return;
+  }
+
+  const attention = normalizeResults(state.results)
+    .filter(
+      (result) =>
+        result.status === "Pending" ||
+        result.status === "Abnormal" ||
+        result.status === "Positive" ||
+        result.status === "Needs follow-up"
+    )
+    .slice(0, 4);
+
+  homeResultsAttentionList.innerHTML = attention.length
+    ? attention.map(renderHomeResultCard).join("")
+    : renderEmptyStateRow("No results need attention right now.");
+}
+
+function renderHomeResultCard(result) {
+  return `
+    <article class="record-card compact-card">
+      <div class="record-card-head">
+        <div class="record-card-body">
+          <strong class="record-card-provider">${escapeHtml(result.testName)}</strong>
+          <span class="record-card-meta">${escapeHtml(result.category)} • ${formatDate(getResultSortDate(result))} • ${escapeHtml(result.provider || result.clinic || "No provider saved")}</span>
+          <p class="record-card-reason">${escapeHtml(result.details || result.treatment || "No details saved")}</p>
+        </div>
+        <span class="pill ${resultStatusClass(result.status)}">${escapeHtml(result.status)}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderResults() {
+  if (!resultsList) {
+    return;
+  }
+
+  resultsFilterButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.resultsFilter === activeResultsFilter);
+  });
+
+  const items = getFilteredResults();
+  if (!items.length) {
+    resultsList.classList.add("empty-state");
+    resultsList.innerHTML = `<p class="muted">${state.results.length ? "No results match this view." : "No structured results saved yet."}</p>`;
+    return;
+  }
+
+  resultsList.classList.remove("empty-state");
+  resultsList.innerHTML = items.map((item) => renderResultCard(item)).join("");
+}
+
+function renderResultCard(result) {
+  const visitLog = state.visitLogs.find((log) => log.id === result.linkedVisitLogId);
+  const linkedVisitLine = visitLog
+    ? `${formatDate(visitLog.date)} • ${visitLog.provider || "Unknown provider"}`
+    : "No visit linked";
+  const carePlanCount = normalizeStringArray(result.linkedCarePlanIds).length;
+
+  return `
+    <article class="record-card result-card">
+      <div class="result-card-head">
+        <div>
+          <strong>${escapeHtml(result.testName)}</strong>
+          <p class="result-card-meta">${escapeHtml(result.category)} • ${formatDate(getResultSortDate(result))} • ${escapeHtml(result.provider || result.clinic || "No provider saved")}</p>
+        </div>
+        <span class="pill ${resultStatusClass(result.status)}">${escapeHtml(result.status)}</span>
+      </div>
+      <div class="result-info-grid compact-grid">
+        <span><strong>Ordered</strong>${formatDate(result.orderedDate)}</span>
+        <span><strong>Received</strong>${formatDate(result.receivedDate)}</span>
+        <span><strong>Linked visit</strong>${escapeHtml(linkedVisitLine)}</span>
+        <span><strong>Care plans</strong>${carePlanCount ? `${carePlanCount} linked` : "None linked"}</span>
+        <span class="full-span"><strong>Details</strong>${escapeHtml(result.details || "Not saved")}</span>
+        <span><strong>Treatment</strong>${escapeHtml(result.treatment || "Not saved")}</span>
+        <span><strong>Follow-up</strong>${escapeHtml(result.followUpNeeded || formatFollowUpDueLabel(result.followUpDueDate) || "Not saved")}</span>
+      </div>
+      <div class="result-card-actions">
+        <button class="button-secondary" type="button" data-result-action="edit" data-result-id="${escapeHtml(result.id)}">Edit</button>
+        <button class="button-danger-outline" type="button" data-result-action="delete" data-result-id="${escapeHtml(result.id)}">Delete</button>
+        ${
+          result.linkedVisitLogId
+            ? `<button class="button-secondary" type="button" data-result-action="view-visit" data-visit-log-id="${escapeHtml(result.linkedVisitLogId)}">View Visit</button>`
+            : ""
+        }
+      </div>
+    </article>
+  `;
+}
+
+function renderVisitLogResultsSummary(entry) {
+  const linked = getResultsForVisitLog(entry.id);
+  const legacyBlock = cleanText(entry.results)
+    ? `<span class="meta">Legacy notes: ${escapeHtml(entry.results)}</span>`
+    : "";
+
+  if (!linked.length) {
+    return legacyBlock ? `<div class="visit-log-results-summary">${legacyBlock}</div>` : "";
+  }
+
+  const newest = linked[0];
+  return `
+    <div class="visit-log-results-summary">
+      <strong>${linked.length} linked result${linked.length === 1 ? "" : "s"}</strong>
+      <span class="pill ${resultStatusClass(newest.status)}">${escapeHtml(newest.status)} • ${escapeHtml(newest.testName)}</span>
+      <button class="button-secondary button-compact" type="button" data-view-visit-results="${escapeHtml(entry.id)}">View Results</button>
+      ${legacyBlock}
+    </div>
+  `;
+}
+
+function renderCarePlanLinkedResultsSummary(item) {
+  const linked = getCarePlanLinkedResults(item);
+  if (!linked.length) {
+    return "";
+  }
+  const newest = linked[0];
+  return `
+    <div class="care-plan-linked-results">
+      <strong>Linked results</strong>
+      <span class="meta">Latest: ${escapeHtml(newest.testName)} • ${formatDate(getResultSortDate(newest))}</span>
+      <span class="pill ${resultStatusClass(newest.status)}">${escapeHtml(newest.status)}</span>
+      <button class="button-secondary button-compact" type="button" data-care-plan-action="view-results" data-care-plan-id="${escapeHtml(item.id)}">View Results</button>
+    </div>
+  `;
+}
+
+function loadVisitLogResultDrafts(visitLogId = editingVisitLogId) {
+  editingVisitLogResultDrafts = visitLogId
+    ? getResultsForVisitLog(visitLogId).map((result) => ({ ...result }))
+    : [];
+  renderVisitLogResultsEditor();
+}
+
+function renderVisitLogResultDraftCard(draft, index) {
+  const categoryOptions = RESULT_CATEGORIES.map(
+    (category) => `<option value="${escapeHtml(category)}"${draft.category === category ? " selected" : ""}>${escapeHtml(category)}</option>`
+  ).join("");
+  const statusOptions = RESULT_STATUSES.map(
+    (status) => `<option value="${escapeHtml(status)}"${draft.status === status ? " selected" : ""}>${escapeHtml(status)}</option>`
+  ).join("");
+
+  return `
+    <article class="visit-log-result-draft" data-result-draft-index="${index}">
+      <div class="visit-log-result-draft-grid">
+        <label class="full-span">
+          Test name
+          <input type="text" data-result-field="testName" value="${escapeHtml(draft.testName)}" placeholder="Chlamydia, CBC, X-ray" />
+        </label>
+        <label>
+          Category
+          <select data-result-field="category">${categoryOptions}</select>
+        </label>
+        <label>
+          Status
+          <select data-result-field="status">${statusOptions}</select>
+        </label>
+        <label>
+          Result date
+          <input type="date" data-result-field="resultDate" value="${escapeHtml(draft.resultDate || "")}" />
+        </label>
+        <label>
+          Received date
+          <input type="date" data-result-field="receivedDate" value="${escapeHtml(draft.receivedDate || "")}" />
+        </label>
+        <label class="full-span">
+          Details
+          <textarea data-result-field="details" rows="2" placeholder="Result values or notes">${escapeHtml(draft.details || "")}</textarea>
+        </label>
+        <label>
+          Treatment
+          <input type="text" data-result-field="treatment" value="${escapeHtml(draft.treatment || "")}" placeholder="Medication or treatment" />
+        </label>
+        <label>
+          Follow-up due
+          <input type="date" data-result-field="followUpDueDate" value="${escapeHtml(draft.followUpDueDate || "")}" />
+        </label>
+      </div>
+      <div class="actions-row">
+        <button class="button-danger-outline button-compact" type="button" data-result-draft-action="remove" data-result-draft-index="${index}">Remove</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderVisitLogResultsEditor() {
+  if (!visitLogResultsEditor) {
+    return;
+  }
+  if (!editingVisitLogResultDrafts.length) {
+    visitLogResultsEditor.innerHTML = `<p class="muted empty-state-row">No structured results added yet.</p>`;
+    return;
+  }
+  visitLogResultsEditor.innerHTML = editingVisitLogResultDrafts
+    .map((draft, index) => renderVisitLogResultDraftCard(draft, index))
+    .join("");
+}
+
+function syncVisitLogResultDraftFromCard(index) {
+  const card = visitLogResultsEditor?.querySelector(`[data-result-draft-index="${index}"]`);
+  const draft = editingVisitLogResultDrafts[index];
+  if (!card || !draft) {
+    return;
+  }
+  card.querySelectorAll("[data-result-field]").forEach((field) => {
+    draft[field.dataset.resultField] = cleanText(field.value);
+  });
+}
+
+function syncAllVisitLogResultDraftsFromDom() {
+  editingVisitLogResultDrafts.forEach((_, index) => syncVisitLogResultDraftFromCard(index));
+}
+
+function handleVisitLogAddResultClick() {
+  editingVisitLogResultDrafts.push(createEmptyResultDraft());
+  renderVisitLogResultsEditor();
+  visitLogForm?.querySelectorAll(".visit-log-section-collapsible")[1]?.setAttribute("open", "");
+}
+
+function handleVisitLogResultsEditorClick(event) {
+  const removeButton = event.target.closest("[data-result-draft-action='remove']");
+  if (!removeButton) {
+    return;
+  }
+  event.preventDefault();
+  syncAllVisitLogResultDraftsFromDom();
+  const index = Number.parseInt(removeButton.dataset.resultDraftIndex, 10);
+  if (Number.isFinite(index)) {
+    editingVisitLogResultDrafts.splice(index, 1);
+    renderVisitLogResultsEditor();
+  }
+}
+
+function syncVisitLogResultsFromDrafts(visitLogId, selectedCarePlanIds = []) {
+  syncAllVisitLogResultDraftsFromDom();
+  const draftIds = new Set(editingVisitLogResultDrafts.map((draft) => draft.id));
+  state.results = state.results.filter(
+    (result) => result.linkedVisitLogId !== visitLogId || draftIds.has(result.id)
+  );
+
+  editingVisitLogResultDrafts.forEach((draft) => {
+    const testName = cleanText(draft.testName);
+    if (!testName) {
+      return;
+    }
+    const normalized = normalizeResultItem({
+      ...draft,
+      testName,
+      linkedVisitLogId: visitLogId,
+      linkedCarePlanIds:
+        normalizeStringArray(draft.linkedCarePlanIds).length > 0
+          ? draft.linkedCarePlanIds
+          : selectedCarePlanIds,
+      updatedAt: new Date().toISOString(),
+    });
+    if (!normalized) {
+      return;
+    }
+    const existingIndex = state.results.findIndex((result) => result.id === normalized.id);
+    if (existingIndex >= 0) {
+      state.results[existingIndex] = {
+        ...state.results[existingIndex],
+        ...normalized,
+      };
+    } else {
+      state.results.unshift(normalized);
+    }
+  });
+}
+
+function showResultsView(view) {
+  resultsPanels.forEach((panel) => {
+    panel.classList.toggle("is-hidden", panel.dataset.resultsView !== view);
+    panel.classList.toggle("is-active", panel.dataset.resultsView === view);
+  });
+}
+
+function showResultsList() {
+  editingResultId = "";
+  activeResultsVisitFilter = "";
+  activeResultsCarePlanFilter = "";
+  showResultsView("list");
+  renderResults();
+}
+
+function openResultsForm(resultId = "") {
+  switchScreen("results");
+  showResultsView("form");
+  renderResultsFormSelects();
+  const result = state.results.find((entry) => entry.id === resultId);
+  if (result) {
+    fillResultsForm(result);
+  } else {
+    resetResultsForm();
+  }
+}
+
+function openResultsForVisitLog(visitLogId) {
+  activeResultsVisitFilter = visitLogId;
+  activeResultsCarePlanFilter = "";
+  switchTab("results");
+}
+
+function resetResultsForm() {
+  editingResultId = "";
+  if (!resultsForm) {
+    return;
+  }
+  resultsForm.reset();
+  resultsForm.elements.resultId.value = "";
+  resultsFormTitle.textContent = "Add result";
+  resultsSubmitButton.textContent = "Save Result";
+  resultsDeleteButton?.classList.add("is-hidden");
+  renderResultsFormSelects();
+}
+
+function fillResultsForm(result) {
+  editingResultId = result.id;
+  resultsForm.elements.resultId.value = result.id;
+  resultsForm.elements.testName.value = result.testName || "";
+  resultsForm.elements.category.value = result.category || "Lab";
+  resultsForm.elements.status.value = result.status || "Pending";
+  resultsForm.elements.resultDate.value = result.resultDate || "";
+  resultsForm.elements.orderedDate.value = result.orderedDate || "";
+  resultsForm.elements.receivedDate.value = result.receivedDate || "";
+  resultsForm.elements.provider.value = result.provider || "";
+  resultsForm.elements.clinic.value = result.clinic || "";
+  resultsForm.elements.details.value = result.details || "";
+  resultsForm.elements.treatment.value = result.treatment || "";
+  resultsForm.elements.treatmentDate.value = result.treatmentDate || "";
+  resultsForm.elements.followUpNeeded.value = result.followUpNeeded || "";
+  resultsForm.elements.followUpDueDate.value = result.followUpDueDate || "";
+  renderResultsFormSelects(result);
+  resultsFormTitle.textContent = "Edit result";
+  resultsSubmitButton.textContent = "Update Result";
+  resultsDeleteButton?.classList.remove("is-hidden");
+}
+
+function renderResultsFormSelects(result = null) {
+  if (resultsVisitLogSelect) {
+    const selectedId = result?.linkedVisitLogId || cleanText(resultsForm?.elements.linkedVisitLogId?.value);
+    resultsVisitLogSelect.innerHTML = [
+      `<option value="">No visit linked</option>`,
+      ...getAllVisitHistoryEntries().map(
+        (entry) =>
+          `<option value="${escapeHtml(entry.id)}"${selectedId === entry.id ? " selected" : ""}>${formatDate(entry.date)} • ${escapeHtml(entry.provider || "Unknown provider")} • ${escapeHtml(entry.reason || "Visit")}</option>`
+      ),
+    ].join("");
+  }
+
+  if (resultsCarePlanSelect) {
+    const selectedIds = new Set(normalizeStringArray(result?.linkedCarePlanIds));
+    resultsCarePlanSelect.innerHTML = (state.carePlan || [])
+      .map(
+        (item) =>
+          `<option value="${escapeHtml(item.id)}"${selectedIds.has(item.id) ? " selected" : ""}>${escapeHtml(item.category || "General")} • ${escapeHtml(item.name)}</option>`
+      )
+      .join("");
+  }
+}
+
+function buildResultFromForm(formData) {
+  const resultId = cleanText(formData.get("resultId")) || editingResultId || crypto.randomUUID();
+  const existing = state.results.find((entry) => entry.id === resultId);
+  const linkedCarePlanIds = resultsCarePlanSelect
+    ? [...resultsCarePlanSelect.selectedOptions].map((option) => option.value).filter(Boolean)
+    : [];
+
+  return normalizeResultItem({
+    id: resultId,
+    linkedVisitLogId: cleanText(formData.get("linkedVisitLogId")),
+    linkedCarePlanIds,
+    resultDate: cleanText(formData.get("resultDate")),
+    orderedDate: cleanText(formData.get("orderedDate")),
+    receivedDate: cleanText(formData.get("receivedDate")),
+    provider: cleanText(formData.get("provider")),
+    clinic: cleanText(formData.get("clinic")),
+    testName: cleanText(formData.get("testName")),
+    category: cleanText(formData.get("category")),
+    status: cleanText(formData.get("status")),
+    details: cleanText(formData.get("details")),
+    treatment: cleanText(formData.get("treatment")),
+    treatmentDate: cleanText(formData.get("treatmentDate")),
+    followUpNeeded: cleanText(formData.get("followUpNeeded")),
+    followUpDueDate: cleanText(formData.get("followUpDueDate")),
+    createdAt: existing?.createdAt,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+function handleResultsSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(resultsForm);
+  const nextResult = buildResultFromForm(formData);
+  if (!nextResult) {
+    window.alert("Add a test name before saving.");
+    return;
+  }
+
+  const existingIndex = state.results.findIndex((entry) => entry.id === nextResult.id);
+  if (existingIndex >= 0) {
+    state.results[existingIndex] = nextResult;
+  } else {
+    state.results.unshift(nextResult);
+  }
+
+  persist();
+  showResultsList();
+  render();
+}
+
+function deleteResult(resultId) {
+  const result = state.results.find((entry) => entry.id === resultId);
+  if (!result) {
+    return;
+  }
+  const confirmed = window.confirm(`Delete result "${result.testName}"?`);
+  if (!confirmed) {
+    return;
+  }
+  state.results = state.results.filter((entry) => entry.id !== resultId);
+  if (editingResultId === resultId) {
+    resetResultsForm();
+    showResultsList();
+  }
+  persist();
+  render();
+}
+
+function handleResultsListClick(event) {
+  const button = event.target.closest("[data-result-action]");
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.resultAction;
+  const resultId = button.dataset.resultId;
+  const visitLogId = button.dataset.visitLogId;
+
+  if (action === "edit") {
+    openResultsForm(resultId);
+    return;
+  }
+  if (action === "delete") {
+    deleteResult(resultId);
+    return;
+  }
+  if (action === "view-visit" && visitLogId) {
+    switchScreen("appointments");
+    showVisitsView("visit-log-form");
+    setAddEditMode("visit-log");
+    loadVisitLogIntoEditor(visitLogId);
+  }
+}
+
 function normalizeCarePlanItem(item, providers = state.providers || []) {
   const name = cleanText(item?.name);
   if (!name) {
@@ -4101,6 +4982,38 @@ const CARE_PLAN_CATEGORY_MATCH_RULES = [
   {
     keys: ["medication", "medications"],
     terms: ["medication", "refill", "psychiatry", "prescription"],
+  },
+];
+
+const VISIT_LOG_CARE_PLAN_SUGGESTION_RULES = [
+  {
+    visitTerms: [
+      "std",
+      "sti",
+      "sexual health",
+      "ob-gyn",
+      "obgyn",
+      "public health",
+      "planned parenthood",
+      "rbj public health",
+    ],
+    itemKeys: ["sti", "std", "sexual health", "screening"],
+  },
+  {
+    visitTerms: ["therapist", "therapy", "counseling", "counselling", "mental health", "psychiatrist", "psychologist"],
+    itemKeys: ["mental health"],
+  },
+  {
+    visitTerms: ["primary care", "pcp", "family medicine", "internal medicine"],
+    itemKeys: ["annual", "labs", "bloodwork", "medication", "vaccine", "immunization"],
+  },
+  {
+    visitTerms: ["dentist", "dental"],
+    itemKeys: ["dentist", "dental"],
+  },
+  {
+    visitTerms: ["eye doctor", "vision", "optometry", "ophthalmology", "eye exam"],
+    itemKeys: ["eye", "vision"],
   },
 ];
 
@@ -4314,14 +5227,193 @@ function migrateCarePlanVisitLogLinks() {
   }
 }
 
+function getVisitLogDraftForCarePlanMatching() {
+  const providerRecord = getProviderFromSelectValue(visitLogProviderSelect?.value);
+  return {
+    provider: providerRecord ? getProviderRecordName(providerRecord) : "",
+    specialty:
+      cleanText(visitLogSpecialtySelect?.value) === "__custom__"
+        ? cleanText(visitLogForm?.elements.customSpecialty?.value)
+        : cleanText(visitLogSpecialtySelect?.value),
+    reason: cleanText(visitLogForm?.elements.reason?.value),
+    summary: cleanText(visitLogForm?.elements.summary?.value),
+    clinic: cleanText(visitLogForm?.elements.clinic?.value),
+    date: cleanText(visitLogForm?.elements.date?.value),
+    status: cleanText(visitLogForm?.elements.status?.value) || "Completed",
+  };
+}
+
 function getSuggestedCarePlanItemsForVisitLog(log) {
-  return (state.carePlan || []).filter((item) => visitLogMatchesCarePlanItem(log, item));
+  const haystack = getVisitLogSearchHaystack(log);
+  const items = state.carePlan || [];
+  const suggestedIds = new Set();
+
+  items.forEach((item) => {
+    if (visitLogMatchesCarePlanItem(log, item)) {
+      suggestedIds.add(item.id);
+    }
+  });
+
+  items.forEach((item) => {
+    const itemHaystack = `${item.category} ${item.name} ${item.summary}`.toLowerCase();
+    VISIT_LOG_CARE_PLAN_SUGGESTION_RULES.forEach((rule) => {
+      const visitMatch = rule.visitTerms.some((term) => haystack.includes(term));
+      const itemMatch = rule.itemKeys.some((key) => itemHaystack.includes(key));
+      if (visitMatch && itemMatch) {
+        suggestedIds.add(item.id);
+      }
+    });
+  });
+
+  return items.filter((item) => suggestedIds.has(item.id));
 }
 
 function getCarePlanIdsForVisitLog(visitLogId) {
   return (state.carePlan || [])
     .filter((item) => normalizeStringArray(item.linkedVisitLogIds).includes(visitLogId))
     .map((item) => item.id);
+}
+
+function getVisitLogLinkedCarePlanItems(visitLogId) {
+  const linkedIds = new Set([
+    ...normalizeStringArray(state.visitLogs.find((log) => log.id === visitLogId)?.linkedCarePlanIds),
+    ...getCarePlanIdsForVisitLog(visitLogId),
+  ]);
+  return (state.carePlan || []).filter((item) => linkedIds.has(item.id));
+}
+
+function getSelectedVisitLogCarePlanIds() {
+  const ids = new Set(normalizeStringArray(selectedVisitLogCarePlanIds));
+  if (pendingCarePlanItemId) {
+    ids.add(pendingCarePlanItemId);
+  }
+  return [...ids];
+}
+
+function loadVisitLogCarePlanSelection(visitLogId = editingVisitLogId) {
+  const log = state.visitLogs.find((entry) => entry.id === visitLogId);
+  selectedVisitLogCarePlanIds = [
+    ...new Set([...normalizeStringArray(log?.linkedCarePlanIds), ...getCarePlanIdsForVisitLog(visitLogId)]),
+  ];
+  if (pendingCarePlanItemId && !selectedVisitLogCarePlanIds.includes(pendingCarePlanItemId)) {
+    selectedVisitLogCarePlanIds.push(pendingCarePlanItemId);
+  }
+}
+
+function toggleVisitLogCarePlanSelection(carePlanId) {
+  if (!carePlanId) {
+    return;
+  }
+  if (selectedVisitLogCarePlanIds.includes(carePlanId)) {
+    selectedVisitLogCarePlanIds = selectedVisitLogCarePlanIds.filter((id) => id !== carePlanId);
+  } else {
+    selectedVisitLogCarePlanIds = [...selectedVisitLogCarePlanIds, carePlanId];
+  }
+}
+
+function renderVisitLogCarePlanChecklistItem(item, { selected = false, suggested = false } = {}) {
+  const status = getCarePlanStatus(item);
+  return `
+    <label class="care-plan-checklist-item${selected ? " is-selected" : ""}" data-care-plan-check-id="${escapeHtml(item.id)}">
+      <input type="checkbox" name="carePlanLinks" value="${escapeHtml(item.id)}" ${selected ? "checked" : ""} />
+      <span class="care-plan-checklist-content">
+        <strong>${escapeHtml(item.name)}</strong>
+        <span class="meta">${escapeHtml(item.category || "General")}${suggested ? " • Suggested" : ""}</span>
+      </span>
+      ${carePlanStatusPill(status)}
+    </label>
+  `;
+}
+
+function renderVisitLogCarePlanChecklist() {
+  if (!visitLogCarePlanChecklist) {
+    return;
+  }
+
+  const items = state.carePlan || [];
+  if (!items.length) {
+    visitLogCarePlanChecklist.innerHTML = `<p class="muted empty-state-row">No care plan items saved yet. Add one in Care Plan.</p>`;
+    if (visitLogCarePlanHint) {
+      visitLogCarePlanHint.textContent = "Create care plan items first, then link visits here.";
+    }
+    return;
+  }
+
+  const draftLog = getVisitLogDraftForCarePlanMatching();
+  const suggestedItems = getSuggestedCarePlanItemsForVisitLog(draftLog);
+  const suggestedIds = new Set(suggestedItems.map((item) => item.id));
+  const selectedSet = new Set(getSelectedVisitLogCarePlanIds());
+  selectedVisitLogCarePlanIds = [...selectedSet];
+
+  const suggestedSection = suggestedItems.length
+    ? `<p class="care-plan-checklist-section-label">Suggested</p>${suggestedItems
+        .map((item) => renderVisitLogCarePlanChecklistItem(item, { selected: selectedSet.has(item.id), suggested: true }))
+        .join("")}`
+    : "";
+
+  const otherItems = items.filter((item) => !suggestedIds.has(item.id));
+  const allSection = otherItems.length
+    ? `<p class="care-plan-checklist-section-label">All care plan items</p>${otherItems
+        .map((item) => renderVisitLogCarePlanChecklistItem(item, { selected: selectedSet.has(item.id), suggested: false }))
+        .join("")}`
+    : "";
+
+  visitLogCarePlanChecklist.innerHTML = `${suggestedSection}${allSection}`;
+
+  if (visitLogCarePlanHint) {
+    visitLogCarePlanHint.textContent = suggestedItems.length
+      ? "Suggested items appear first based on specialty, provider, clinic, and reason."
+      : "Select one or more care plan items to link this visit.";
+  }
+}
+
+function handleVisitLogCarePlanChecklistChange(event) {
+  const checkbox = event.target.closest('input[type="checkbox"][name="carePlanLinks"]');
+  if (!checkbox) {
+    return;
+  }
+  const carePlanId = checkbox.value;
+  if (checkbox.checked) {
+    if (!selectedVisitLogCarePlanIds.includes(carePlanId)) {
+      selectedVisitLogCarePlanIds.push(carePlanId);
+    }
+  } else {
+    selectedVisitLogCarePlanIds = selectedVisitLogCarePlanIds.filter((id) => id !== carePlanId);
+  }
+  renderVisitLogCarePlanChecklist();
+}
+
+function handleVisitLogCarePlanChecklistClick(event) {
+  if (event.target.matches('input[type="checkbox"][name="carePlanLinks"]')) {
+    return;
+  }
+  const row = event.target.closest("[data-care-plan-check-id]");
+  if (!row) {
+    return;
+  }
+  event.preventDefault();
+  const checkbox = row.querySelector('input[type="checkbox"][name="carePlanLinks"]');
+  if (!checkbox) {
+    return;
+  }
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function renderVisitLogCarePlanSummary(entry) {
+  const linkedItems = getVisitLogLinkedCarePlanItems(entry.id);
+  if (!linkedItems.length) {
+    return "";
+  }
+  return `
+    <div class="visit-log-care-plan-summary">
+      <strong>Care plan:</strong> ${linkedItems.map((item) => escapeHtml(item.name)).join(", ")}
+    </div>
+  `;
+}
+
+function renderVisitLogCarePlanSelect() {
+  renderVisitLogCarePlanChecklist();
 }
 
 function syncVisitLogCarePlanLinks(visitLogId, selectedCarePlanIds) {
@@ -4349,51 +5441,6 @@ function syncVisitLogCarePlanLinks(visitLogId, selectedCarePlanIds) {
       linkedCarePlanIds: [...selectedSet],
       updatedAt: new Date().toISOString(),
     };
-  }
-}
-
-function renderVisitLogCarePlanSelect() {
-  if (!visitLogCarePlanSelect) {
-    return;
-  }
-
-  const previousSelection = new Set([...visitLogCarePlanSelect.selectedOptions].map((option) => option.value));
-  if (pendingCarePlanItemId) {
-    previousSelection.add(pendingCarePlanItemId);
-  }
-  if (editingVisitLogId) {
-    getCarePlanIdsForVisitLog(editingVisitLogId).forEach((id) => previousSelection.add(id));
-  }
-
-  const providerRecord = getProviderFromSelectValue(visitLogProviderSelect?.value);
-  const draftLog = {
-    provider: providerRecord ? getProviderRecordName(providerRecord) : "",
-    specialty:
-      cleanText(visitLogSpecialtySelect?.value) === "__custom__"
-        ? cleanText(visitLogForm?.elements.customSpecialty?.value)
-        : cleanText(visitLogSpecialtySelect?.value),
-    reason: cleanText(visitLogForm?.elements.reason?.value),
-    summary: cleanText(visitLogForm?.elements.summary?.value),
-    clinic: cleanText(visitLogForm?.elements.clinic?.value),
-    date: cleanText(visitLogForm?.elements.date?.value),
-    status: cleanText(visitLogForm?.elements.status?.value) || "Completed",
-  };
-
-  const suggestedIds = new Set(getSuggestedCarePlanItemsForVisitLog(draftLog).map((item) => item.id));
-  const options = (state.carePlan || [])
-    .map((item) => {
-      const suggested = suggestedIds.has(item.id) ? " (suggested)" : "";
-      return `<option value="${escapeHtml(item.id)}"${previousSelection.has(item.id) || suggestedIds.has(item.id) ? " selected" : ""}>${escapeHtml(item.category || "General")} • ${escapeHtml(item.name)}${suggested}</option>`;
-    })
-    .join("");
-
-  visitLogCarePlanSelect.innerHTML = options;
-  visitLogCarePlanSelect.classList.toggle("has-options", Boolean(options));
-  visitLogCarePlanSelect.size = options ? Math.min(3, (state.carePlan || []).length) : 2;
-  if (visitLogCarePlanHint) {
-    visitLogCarePlanHint.textContent = suggestedIds.size
-      ? "Suggested care plan items are pre-selected based on specialty and reason."
-      : "Optionally link this visit to one or more care plan items.";
   }
 }
 
@@ -4990,6 +6037,7 @@ function renderCarePlanCard(item) {
         <span><strong>Provider</strong>${escapeHtml(getCarePlanProviderDisplayName(item))}${providerDetailsBlock}</span>
       </div>
       ${renderCarePlanLinkedVisitsSummary(item, connectedLogs)}
+      ${renderCarePlanLinkedResultsSummary(item)}
       ${notesBlock}
       <div class="care-plan-card-actions actions-row">
         <button class="button-secondary" type="button" data-care-plan-action="edit" data-care-plan-id="${escapeHtml(item.id)}">Edit</button>
@@ -5182,6 +6230,13 @@ function handleCarePlanListClick(event) {
   }
   if (action === "view-linked") {
     openCarePlanForm(item.id);
+    return;
+  }
+  if (action === "view-results") {
+    activeResultsFilter = "all";
+    activeResultsVisitFilter = "";
+    activeResultsCarePlanFilter = item.id;
+    switchTab("results");
     return;
   }
   if (action === "delete") {
@@ -5471,7 +6526,8 @@ function openVisitLogFromCarePlan(item) {
   const specialtyValue = linkedProvider?.specialty || item.category || "";
   setSelectWithCustomValue(visitLogSpecialtySelect, visitLogForm.elements.customSpecialty, specialtyValue);
   syncVisitLogCustomSpecialtyVisibility();
-  renderVisitLogCarePlanSelect();
+  loadVisitLogCarePlanSelection("");
+  renderVisitLogCarePlanChecklist();
   syncVisitLogOptionalSections();
 }
 
@@ -5496,13 +6552,14 @@ function openAppointmentFromCarePlan(item) {
   appointmentForm.elements.appointmentTime.value = item.scheduledTime || "";
   appointmentForm.elements.appointmentStatus.value =
     item.scheduledDate || item.nextDueDate ? "Scheduled" : "Planned";
-  appointmentForm.elements.notes.value = [item.summary, item.notes].filter(Boolean).join("\n\n");
+  appointmentForm.elements.questionsToAsk.value = [item.summary, item.notes].filter(Boolean).join("\n\n");
   if (isValidIsoDate(item.nextDueDate)) {
     appointmentForm.elements.nextRecommendedVisit.value = item.nextDueDate;
   }
   syncCustomFieldVisibility();
   syncAppointmentPreview();
   syncFollowUpShortcutButtons(appointmentForm, "next-visit");
+  syncAppointmentOptionalSections();
 }
 
 function setVisitLogProviderFromCarePlan(item) {

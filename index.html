@@ -109,6 +109,7 @@
       <nav class="tabbar" aria-label="Primary">
         <button class="tabbar-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
         <button class="tabbar-button" type="button" data-screen-target="appointments">Visits</button>
+        <button class="tabbar-button" type="button" data-screen-target="results">Results</button>
         <button class="tabbar-button" type="button" data-screen-target="care-plan">Care Plan</button>
         <button class="tabbar-button" type="button" data-screen-target="care-team">Care Team</button>
         <button class="tabbar-button" type="button" data-screen-target="insurance">Insurance</button>
@@ -133,6 +134,7 @@
               <button id="homeViewVisitsAction" class="action-card button-secondary" type="button">View Visits</button>
               <button id="homeCareTeamAction" class="action-card button-secondary" type="button">Care Team</button>
               <button id="homeInsuranceAction" class="action-card button-secondary" type="button">Insurance</button>
+              <button id="homeViewResultsAction" class="action-card button-secondary" type="button">View Results</button>
               <button id="homeCarePlanAction" class="action-card button-secondary" type="button">Care Plan</button>
             </div>
             <div class="stats-grid home-status-grid">
@@ -154,6 +156,25 @@
               </article>
             </div>
 
+            <div class="stats-grid home-results-grid">
+              <article class="stat-card">
+                <span class="stat-label">Pending results</span>
+                <strong id="homePendingResultsCount" class="stat-value">0</strong>
+              </article>
+              <article class="stat-card">
+                <span class="stat-label">Abnormal / positive</span>
+                <strong id="homeAbnormalResultsCount" class="stat-value">0</strong>
+              </article>
+              <article class="stat-card">
+                <span class="stat-label">Results need follow-up</span>
+                <strong id="homeResultsFollowUpCount" class="stat-value">0</strong>
+              </article>
+              <article class="stat-card">
+                <span class="stat-label">Treatment completed</span>
+                <strong id="homeTreatmentCompletedCount" class="stat-value">0</strong>
+              </article>
+            </div>
+
             <div class="dashboard-grid">
               <section class="dashboard-subsection">
                 <h3 class="subsection-title">Today</h3>
@@ -166,6 +187,10 @@
               <section class="dashboard-subsection">
                 <h3 class="subsection-title">Overdue</h3>
                 <div id="homeOverdueList" class="compact-list"></div>
+              </section>
+              <section class="dashboard-subsection dashboard-subsection-wide">
+                <h3 class="subsection-title">Results Needing Attention</h3>
+                <div id="homeResultsAttentionList" class="compact-list"></div>
               </section>
               <section class="dashboard-subsection dashboard-subsection-wide">
                 <h3 class="subsection-title">Recent Visit Logs</h3>
@@ -278,20 +303,22 @@
               <div>
                 <p class="eyebrow">Visits</p>
                 <h2 id="appointmentFormTitle">Add appointment</h2>
-                <p class="meta">
-                  Suggested next visit dates are calculated from the rule you choose and are not medical advice.
-                </p>
+                <p class="meta">Schedule an upcoming visit quickly.</p>
               </div>
               <button id="appointmentFormBack" class="button-secondary" type="button">← Back to Visits</button>
             </div>
-            <form id="appointmentForm" class="form-grid">
+            <div class="appointment-shell">
+            <form id="appointmentForm" class="appointment-form">
               <input type="hidden" name="appointmentId" />
-              <details class="full-span form-section" open>
-                <summary class="form-section-summary">Basic Info</summary>
-                <div class="form-grid form-section-body">
+
+              <p class="appointment-helper meta">Only date, time, and provider/clinic are needed. Add extra details if helpful.</p>
+
+              <section class="appointment-section appointment-section-basics">
+                <p class="appointment-section-label eyebrow">Appointment basics</p>
+                <div class="form-grid appointment-basics-grid">
                   <label>
                     Provider
-                    <select name="doctor" id="providerSelect" required></select>
+                    <select name="doctor" id="providerSelect"></select>
                   </label>
                   <label>
                     Specialty
@@ -327,6 +354,20 @@
                       <option>Need to reschedule</option>
                     </select>
                   </label>
+                  <label class="full-span">
+                    Reason for visit
+                    <select name="reasonForVisit" id="reasonSelect"></select>
+                  </label>
+                  <label id="customReasonLabel" class="full-span is-hidden">
+                    Custom reason for visit
+                    <input type="text" name="customReasonForVisit" placeholder="Follow-up, annual exam, screening, symptoms" />
+                  </label>
+                </div>
+              </section>
+
+              <details class="form-section appointment-section-collapsible">
+                <summary class="form-section-summary">Reminder &amp; follow-up</summary>
+                <div class="form-section-body form-grid appointment-collapsible-grid">
                   <label class="full-span repeat-toggle">
                     <input type="checkbox" name="repeatVisit" id="repeatVisitToggle" />
                     Repeat visit?
@@ -339,13 +380,35 @@
                   </div>
                   <label>
                     Remind me X days before
-                    <input type="number" name="reminderDaysBefore" min="0" step="1" placeholder="14" required />
+                    <input type="number" name="reminderDaysBefore" min="0" step="1" placeholder="14" />
                   </label>
+                  <label>
+                    Reminder notifications
+                    <select name="reminderEnabled">
+                      <option value="yes">Enabled</option>
+                      <option value="no">Disabled</option>
+                    </select>
+                  </label>
+                  <div class="follow-up-section full-span">
+                    <p class="eyebrow">Next recommended visit</p>
+                    <p id="appointmentFollowUpHint" class="meta follow-up-hint is-hidden"></p>
+                    <div class="follow-up-shortcut-row">
+                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="none">No follow-up</button>
+                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="6months">6 months</button>
+                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="1year">1 year</button>
+                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="custom">Custom date</button>
+                    </div>
+                    <label>
+                      Override next recommended visit (optional)
+                      <input type="date" name="nextRecommendedVisit" />
+                    </label>
+                  </div>
                 </div>
               </details>
-              <details class="full-span form-section more-details">
-                <summary class="form-section-summary">More details</summary>
-                <div class="form-grid form-section-body">
+
+              <details class="form-section appointment-section-collapsible">
+                <summary class="form-section-summary">Extra details</summary>
+                <div class="form-section-body form-grid appointment-collapsible-grid">
                   <label>
                     Address
                     <input type="text" name="place" placeholder="Street address, city, state" />
@@ -362,40 +425,11 @@
                     Portal link
                     <input type="url" name="portalLink" placeholder="https://portal.example.com" />
                   </label>
-                  <div class="follow-up-section full-span">
-                    <p class="eyebrow">Next recommended visit</p>
-                    <p id="appointmentFollowUpHint" class="meta follow-up-hint is-hidden"></p>
-                    <div class="follow-up-shortcut-row">
-                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="none">No follow-up</button>
-                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="6months">6 months</button>
-                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="1year">1 year</button>
-                      <button type="button" class="button-secondary follow-up-shortcut" data-next-visit-preset="custom">Custom date</button>
-                    </div>
-                    <label>
-                      Override next recommended visit (optional)
-                      <input type="date" name="nextRecommendedVisit" />
-                    </label>
-                  </div>
-                  <label>
-                    Reminder notifications
-                    <select name="reminderEnabled">
-                      <option value="yes">Enabled</option>
-                      <option value="no">Disabled</option>
-                    </select>
-                  </label>
-                  <label class="full-span">
-                    Reason for visit
-                    <select name="reasonForVisit" id="reasonSelect"></select>
-                  </label>
-                  <label id="customReasonLabel" class="full-span is-hidden">
-                    Custom reason for visit
-                    <input type="text" name="customReasonForVisit" placeholder="Follow-up, annual exam, screening, symptoms" />
-                  </label>
                   <label class="full-span">
                     Notes / questions to ask
                     <textarea
                       name="questionsToAsk"
-                      rows="3"
+                      rows="2"
                       placeholder="Questions, symptoms, prep details, and what to bring"
                     ></textarea>
                   </label>
@@ -411,35 +445,33 @@
                     Test results summary
                     <textarea
                       name="testResults"
-                      rows="3"
-                      placeholder="Lab results, imaging notes, or important numbers"
-                    ></textarea>
-                  </label>
-                  <label class="full-span">
-                    Notes
-                    <textarea
-                      name="notes"
-                      rows="3"
-                      placeholder="Hours, prep instructions, parking details, or what to ask next time"
+                      rows="2"
+                      placeholder="Optional — use Results tab after visit for structured results"
                     ></textarea>
                   </label>
                   <label class="full-span">
                     Test result files
                     <input type="file" name="resultFiles" multiple />
-                    <span class="meta">This app stores selected file names only, not the actual files.</span>
+                    <span class="meta">Stores file names only, not the actual files.</span>
                   </label>
                 </div>
               </details>
-              <div class="preview-card full-span">
+
+              <div id="appointmentPreviewPanel" class="preview-card appointment-preview is-hidden">
                 <span class="eyebrow">Preview</span>
                 <strong id="suggestionPreview">Next visit suggestion will appear here.</strong>
                 <span id="reminderPreview" class="meta">Reminder timing will appear here.</span>
               </div>
-              <div class="inline-row full-span">
-                <button id="appointmentSubmitButton" class="button-primary" type="submit">Save Appointment</button>
-                <button id="appointmentCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+
+              <div class="appointment-actions-sticky">
+                <p id="appointmentFormError" class="appointment-form-error is-hidden" role="alert"></p>
+                <div class="appointment-actions">
+                  <button id="appointmentSubmitButton" class="button-primary" type="submit">Save Appointment</button>
+                  <button id="appointmentCancelButton" class="button-secondary is-hidden" type="button">Cancel Edit</button>
+                </div>
               </div>
             </form>
+            </div>
           </section>
 
           <section class="panel visits-panel is-hidden" data-visits-view="visit-log-form">
@@ -522,10 +554,7 @@
                   <div class="full-span" id="visitLogCarePlanSection">
                     <p class="eyebrow">Connect to care plan</p>
                     <p id="visitLogCarePlanHint" class="meta">Optionally link this visit to one or more care plan items.</p>
-                    <label>
-                      Care plan items
-                      <select id="visitLogCarePlanSelect" name="carePlanLinks" multiple size="2"></select>
-                    </label>
+                    <div id="visitLogCarePlanChecklist" class="care-plan-checklist" role="group" aria-label="Care plan items"></div>
                   </div>
                   <p id="visitLogFollowUpHint" class="meta follow-up-hint full-span is-hidden"></p>
                   <div class="follow-up-shortcut-row full-span">
@@ -546,7 +575,16 @@
               </details>
 
               <details class="form-section visit-log-section-collapsible">
-                <summary class="form-section-summary">Notes, Results &amp; Cost</summary>
+                <summary class="form-section-summary">Results</summary>
+                <div class="form-section-body visit-log-results-editor-wrap">
+                  <p class="meta">Add structured lab, STI, imaging, or treatment results linked to this visit.</p>
+                  <div id="visitLogResultsEditor" class="visit-log-results-editor"></div>
+                  <button id="visitLogAddResultButton" class="button-secondary" type="button">+ Add Result</button>
+                </div>
+              </details>
+
+              <details class="form-section visit-log-section-collapsible">
+                <summary class="form-section-summary">Notes &amp; Cost</summary>
                 <div class="form-section-body form-grid visit-log-collapsible-grid">
                   <label class="full-span">
                     Summary
@@ -559,9 +597,9 @@
                     <button type="button" class="button-secondary note-preset" data-visit-log-preset="paid-copay">Paid copay</button>
                     <button type="button" class="button-secondary note-preset" data-visit-log-preset="no-concerns">No concerns</button>
                   </div>
-                  <label class="full-span">
-                    Results
-                    <textarea name="results" rows="2" placeholder="Labs, imaging, diagnosis, or takeaways"></textarea>
+                  <label class="full-span visit-log-legacy-results">
+                    Legacy result notes
+                    <textarea name="results" rows="2" placeholder="Older free-text results still display here"></textarea>
                   </label>
                   <label>
                     Cost / copay
@@ -582,6 +620,126 @@
             </form>
             </div>
             <div id="visitHistoryGlobalList" class="card-list empty-state is-hidden"></div>
+          </section>
+        </section>
+
+        <section class="app-screen" data-screen="results">
+          <section class="panel results-panel is-active" data-results-view="list">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Results</p>
+                <h2>Test &amp; lab results</h2>
+                <p class="meta">Structured results linked to visits and care plan items.</p>
+              </div>
+              <button id="resultsAddButton" class="button-primary" type="button">+ Add Result</button>
+            </div>
+            <label class="visits-search-field">
+              Search results
+              <input id="resultsSearchInput" type="search" placeholder="Search test, provider, clinic, details, treatment" />
+            </label>
+            <div class="results-filter-row">
+              <button class="button-secondary is-active" type="button" data-results-filter="all">All</button>
+              <button class="button-secondary" type="button" data-results-filter="pending">Pending</button>
+              <button class="button-secondary" type="button" data-results-filter="abnormal">Abnormal / positive</button>
+              <button class="button-secondary" type="button" data-results-filter="follow-up">Needs follow-up</button>
+              <button class="button-secondary" type="button" data-results-filter="treated">Treated</button>
+            </div>
+            <div id="resultsList" class="results-list empty-state"></div>
+          </section>
+
+          <section class="panel results-panel is-hidden" data-results-view="form">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Results</p>
+                <h2 id="resultsFormTitle">Add result</h2>
+              </div>
+              <button id="resultsFormBack" class="button-secondary" type="button">← Back to Results</button>
+            </div>
+            <form id="resultsForm" class="form-grid results-form">
+              <input type="hidden" name="resultId" />
+              <label>
+                Test name
+                <input type="text" name="testName" placeholder="Chlamydia screening, CBC, X-ray" required />
+              </label>
+              <label>
+                Category
+                <select name="category" id="resultsCategorySelect">
+                  <option>Lab</option>
+                  <option>STI / STD</option>
+                  <option>Imaging</option>
+                  <option>Diagnosis</option>
+                  <option>Medication / treatment</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <label>
+                Status
+                <select name="status" id="resultsStatusSelect">
+                  <option>Pending</option>
+                  <option>Normal</option>
+                  <option>Abnormal</option>
+                  <option>Positive</option>
+                  <option>Negative</option>
+                  <option>Treated</option>
+                  <option>Needs follow-up</option>
+                </select>
+              </label>
+              <label>
+                Result date
+                <input type="date" name="resultDate" />
+              </label>
+              <label>
+                Ordered date
+                <input type="date" name="orderedDate" />
+              </label>
+              <label>
+                Received date
+                <input type="date" name="receivedDate" />
+              </label>
+              <label>
+                Provider
+                <input type="text" name="provider" placeholder="Provider name" />
+              </label>
+              <label>
+                Clinic
+                <input type="text" name="clinic" placeholder="Clinic or lab" />
+              </label>
+              <label class="full-span">
+                Linked visit log
+                <select name="linkedVisitLogId" id="resultsVisitLogSelect">
+                  <option value="">No visit linked</option>
+                </select>
+              </label>
+              <label class="full-span">
+                Linked care plan items
+                <select name="linkedCarePlanIds" id="resultsCarePlanSelect" multiple size="3"></select>
+              </label>
+              <label class="full-span">
+                Result details
+                <textarea name="details" rows="2" placeholder="Values, notes, reference ranges"></textarea>
+              </label>
+              <label>
+                Treatment / medication
+                <input type="text" name="treatment" placeholder="Antibiotic, referral, etc." />
+              </label>
+              <label>
+                Treatment date
+                <input type="date" name="treatmentDate" />
+              </label>
+              <label>
+                Follow-up needed
+                <input type="text" name="followUpNeeded" placeholder="Retest in 3 months" />
+              </label>
+              <label>
+                Follow-up due date
+                <input type="date" name="followUpDueDate" />
+              </label>
+              <div class="inline-row full-span results-form-actions">
+                <button id="resultsSubmitButton" class="button-primary" type="submit">Save Result</button>
+                <button id="resultsCancelButton" class="button-secondary" type="button">Cancel</button>
+                <button id="resultsDeleteButton" class="button-danger-outline is-hidden" type="button">Delete Result</button>
+              </div>
+            </form>
           </section>
         </section>
 
@@ -828,6 +986,7 @@
       <nav class="bottom-nav" aria-label="Primary mobile navigation">
         <button class="bottom-nav-button is-active" type="button" data-screen-target="dashboard">Dashboard</button>
         <button class="bottom-nav-button" type="button" data-screen-target="appointments">Visits</button>
+        <button class="bottom-nav-button" type="button" data-screen-target="results">Results</button>
         <button class="bottom-nav-button" type="button" data-screen-target="care-plan">Care Plan</button>
         <button class="bottom-nav-button" type="button" data-screen-target="care-team">Care Team</button>
         <button class="bottom-nav-button" type="button" data-screen-target="insurance">Insurance</button>
